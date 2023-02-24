@@ -7,7 +7,7 @@
 #include "esp_log.h"
 #include "wonderconfig.h"
 
-const char* TAG = "main";
+static const char* TAG = "main";
 
 void setup() {
   ESP_LOGI(TAG, "Wonder Reader Hello!");

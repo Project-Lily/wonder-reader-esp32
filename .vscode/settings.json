@@ -10,6 +10,8 @@
     "random": "cpp",
     "array": "cpp",
     "memory": "cpp",
-    "initializer_list": "cpp"
+    "initializer_list": "cpp",
+    "motorcontrol.h": "c",
+    "accelstepper.h": "c"
   }
 }

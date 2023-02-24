@@ -3,6 +3,8 @@
 
 #include "AccelStepper.h"
 
-
+namespace wonder {
+  void init_motors();
+}
 
 #endif
