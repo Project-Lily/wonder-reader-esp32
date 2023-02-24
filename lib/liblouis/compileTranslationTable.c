@@ -4628,7 +4628,7 @@ _lou_getTablePath(void) {
 			free(path);
 		}
 #else
-		cp += sprintf(cp, ",%s", "./tables");
+		cp += sprintf(cp, ",%s", "/spiffs/tables");
 #endif
 	}
 	if (searchPath[0] != '\0')
