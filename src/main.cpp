@@ -5,13 +5,18 @@
 #include <stdio.h>
 #include <SPIFFS.h>
 #include "esp_log.h"
+#include "wonderconfig.h"
 
 const char* TAG = "main";
 
 void setup() {
   ESP_LOGI(TAG, "Wonder Reader Hello!");
+  if (!wonder::init_configuration()) {
+    ESP_LOGE(TAG, "Error loading configuration");
+    return;
+  }
+  wonder::print_preferences();
 
-  // put your setup code here, to run once:
   if(!SPIFFS.begin(true)){
     ESP_LOGE(TAG, "An Error has occurred while mounting SPIFFS");
     return;
