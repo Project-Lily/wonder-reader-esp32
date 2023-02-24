@@ -15,7 +15,7 @@ void setup() {
     ESP_LOGE(TAG, "Error loading configuration");
     return;
   }
-  wonder::print_preferences();
+  wonder::print_configuration();
 
   if(!SPIFFS.begin(true)){
     ESP_LOGE(TAG, "An Error has occurred while mounting SPIFFS");
