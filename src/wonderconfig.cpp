@@ -14,6 +14,11 @@ void wonder::_reset_configuration(Preferences* pref) {
   pref->putDouble(get_config_string(XSTEP_PER_MM), DEF_XSTEP_PER_MM);
   pref->putDouble(get_config_string(YSTEP_PER_MM), DEF_YSTEP_PER_MM);
   pref->putDouble(get_config_string(LIMIT_TO_CELL), DEF_LIMIT_TO_CELL);
+  pref->putDouble(get_config_string(X_SPEED), DEF_X_SPEED);
+  pref->putDouble(get_config_string(X_ACCEL), DEF_X_ACCEL);
+  pref->putDouble(get_config_string(X_HOME_SPEED), DEF_X_HOME_SPEED);
+  pref->putDouble(get_config_string(Y_SPEED), DEF_Y_SPEED);
+  pref->putDouble(get_config_string(Y_ACCEL), DEF_Y_ACCEL);
   pref->putBool("conf_init", true);
 }
 
@@ -59,4 +64,9 @@ void wonder::print_configuration() {
   ESP_LOGI(TAG, "%s: %f", get_config_string(XSTEP_PER_MM), pref.getDouble(get_config_string(XSTEP_PER_MM)));
   ESP_LOGI(TAG, "%s: %f", get_config_string(YSTEP_PER_MM), pref.getDouble(get_config_string(YSTEP_PER_MM)));
   ESP_LOGI(TAG, "%s: %f", get_config_string(LIMIT_TO_CELL), pref.getDouble(get_config_string(LIMIT_TO_CELL)));
+  ESP_LOGI(TAG, "%s: %f", get_config_string(X_SPEED), pref.getDouble(get_config_string(X_SPEED)));
+  ESP_LOGI(TAG, "%s: %f", get_config_string(X_ACCEL), pref.getDouble(get_config_string(X_ACCEL)));
+  ESP_LOGI(TAG, "%s: %f", get_config_string(X_HOME_SPEED), pref.getDouble(get_config_string(X_HOME_SPEED)));
+  ESP_LOGI(TAG, "%s: %f", get_config_string(Y_SPEED), pref.getDouble(get_config_string(Y_SPEED)));
+  ESP_LOGI(TAG, "%s: %f", get_config_string(Y_ACCEL), pref.getDouble(get_config_string(Y_ACCEL)));
 }

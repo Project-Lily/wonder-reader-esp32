@@ -6,6 +6,7 @@
 #include <SPIFFS.h>
 #include "esp_log.h"
 #include "wonderconfig.h"
+#include "control/braillecontrol.h"
 
 static const char* TAG = "main";
 
@@ -21,6 +22,8 @@ void setup() {
     ESP_LOGE(TAG, "An Error has occurred while mounting SPIFFS");
     return;
   }
+
+  // wonder::init_motors();
 
   widechar inbuf[15] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!'};
   int inbuflen = 15;
