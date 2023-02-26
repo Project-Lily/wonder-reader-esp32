@@ -23,7 +23,7 @@ void setup() {
     return;
   }
 
-  // wonder::init_motors();
+  wonder::init_motors();
 
   widechar inbuf[15] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!'};
   int inbuflen = 15;

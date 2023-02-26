@@ -4,6 +4,7 @@
 #include "AccelStepper.h"
 #include "driver/gpio.h"
 
+// How many braille cells are in each X axis
 #define CELL_PER_X_AXIS 9
 
 namespace wonder {

@@ -32,12 +32,12 @@ bool wonder::init_configuration() {
     return false;
   }
 
-  pref.clear();
-
   // If configuration has not been init, then load all default to config
   if (!pref.getBool("conf_init", false)) {
     _reset_configuration(&pref);
     ESP_LOGI(TAG, "Configuration initialized");
+  } else {
+    ESP_LOGI(TAG, "Configuration detected");
   }
 
   return true;
