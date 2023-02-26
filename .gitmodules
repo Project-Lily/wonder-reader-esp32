@@ -1,0 +1,3 @@
+[submodule "lib/accelstepper"]
+	path = lib/accelstepper
+	url = https://github.com/waspinator/AccelStepper.git
