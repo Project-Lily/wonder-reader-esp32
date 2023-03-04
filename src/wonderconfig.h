@@ -15,9 +15,9 @@
  */
 #define DEF_LIMIT_TO_CELL 15.0
 
-#define DEF_X_SPEED 100.0
-#define DEF_X_ACCEL 100.0
-#define DEF_X_HOME_SPEED 40.0
+#define DEF_X_SPEED 420.0
+#define DEF_X_ACCEL 300.0
+#define DEF_X_HOME_SPEED 420.0
 
 #define DEF_Y_SPEED 40.0
 #define DEF_Y_ACCEL 40.0

@@ -20,8 +20,11 @@ namespace wonder {
     gpio_num_t limit_pin;
   } Stepper;
 
+  void _home_x(double x_home_speed, double x_norm_speed);
+
   // Initializes the motors
   void init_motors();
+  void home_x();
 }
 
 #endif
