@@ -12,6 +12,9 @@
     "memory": "cpp",
     "initializer_list": "cpp",
     "motorcontrol.h": "c",
-    "accelstepper.h": "c"
-  }
+    "accelstepper.h": "c",
+    "fstream": "cpp",
+    "sstream": "cpp"
+  },
+  "cmake.configureOnOpen": false
 }

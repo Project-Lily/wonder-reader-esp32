@@ -8,13 +8,78 @@
 
 #define X_STEPPERS 1
 #define DEBOUNCE_DELAY 1000 // ms
+#define Y_HOME_DURATION 500 // ms
 
-wonder::Stepper x_steppers[X_STEPPERS];
-ShiftRegister74HC595<1> sr_x(15, 2, 4);
+#define BRAILLE_PINS 6 // Braille pin per cell
+#define Y_ENABLE_PIN 19
+
+ShiftRegister74HC595<1> sr_x(16, 2, 4);
+wonder::Stepper x_steppers[X_STEPPERS] = {{
+  // NOTE: pins here are for the shift register
+  .stepper = AccelStepper(&sr_x, AccelStepper::FULL4WIRE, 0, 1, 2, 3),
+  .home_type = wonder::HOMING,
+  .limit_pin = GPIO_NUM_5,
+}};
+
+ShiftRegister74HC595<1> sr_y(18, 17, 5);
+AccelStepper y_steppers[X_STEPPERS][BRAILLE_PINS] = {
+  {
+    AccelStepper(&sr_y, AccelStepper::DRIVER, 0, 1),
+    AccelStepper(&sr_y, AccelStepper::DRIVER, 2, 3),
+    AccelStepper(&sr_y, AccelStepper::DRIVER, 4, 5),
+    AccelStepper(&sr_y, AccelStepper::DRIVER, 6, 7),
+    AccelStepper(&sr_y, AccelStepper::DRIVER, 8, 9),
+    AccelStepper(&sr_y, AccelStepper::DRIVER, 10, 11),
+  },
+};
 
 static const char* TAG = "control";
 const char* text = "";
 int offset = 5;
+
+void wonder::_home_y(double y_speed, long max_home_duration) {
+  long home_until = (esp_timer_get_time() / 1000) + max_home_duration;
+
+  ESP_LOGI(TAG, "[%dms] Homing Y motors", esp_log_timestamp());
+  // Sets speed
+  for (int i = 0; i < X_STEPPERS; i++) {
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[i][j].setMaxSpeed(y_speed);
+      y_steppers[i][j].setSpeed(y_speed);
+    }
+  }
+
+  // Home all the y steppers. Because they do not have limit switches,
+  // We just force all the steppers to the edge.
+  while ((esp_timer_get_time() / 1000) <= home_until) {
+    for (int i = 0; i < X_STEPPERS; i++) {
+      for (int j = 0; j < BRAILLE_PINS; j++) {
+        y_steppers[i][j].runSpeed();
+      }
+    }
+  }
+
+  // Set position to 0
+  for (int i = 0; i < X_STEPPERS; i++) {
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[i][j].setCurrentPosition(0);
+      y_steppers[i][j].disableOutputs();
+    }
+  }
+
+  ESP_LOGI(TAG, "[%dms] Y motors homed", esp_log_timestamp());
+}
+
+void wonder::home_y() {
+  Preferences pref;
+  if (!wonder::get_configuration(&pref)) {
+    ESP_LOGE(TAG, "Error loading preferences");
+    return;
+  }
+
+  double y_speed = pref.getDouble(wonder::get_config_string(Y_SPEED));
+  _home_x(y_speed, Y_HOME_DURATION);
+}
 
 void wonder::_home_x(double x_home_speed, double x_norm_speed) {
   x_steppers[0].stepper.setMaxSpeed(x_home_speed);
@@ -22,7 +87,6 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
   // Set speed to be minus because we are homing
   x_steppers[0].stepper.setSpeed(-x_home_speed);
 
-  ESP_LOGI(TAG, "[%dms] Homing motors", esp_log_timestamp());
   ESP_LOGI(TAG, "[%dms] Homing motor X (%d motor(s))", esp_log_timestamp(), X_STEPPERS);
 
   // To keep track when motors should run
@@ -77,7 +141,7 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
     }
     if (homed_count == X_STEPPERS) break;
   }
-  ESP_LOGI(TAG, "Carriage motor homed");
+  ESP_LOGI(TAG, "[%dms]: Carriage motor homed", esp_log_timestamp());
 }
 
 void wonder::home_x() {
@@ -100,19 +164,29 @@ void wonder::init_motors() {
     return;
   }
 
-  // Initialize pins
-  x_steppers[0] = {
-    // NOTE: pins here are for the shift register
-    .stepper = AccelStepper(&sr_x, AccelStepper::FULL4WIRE, 0, 1, 2, 3),
-    .home_type = HOMING,
-    .limit_pin = GPIO_NUM_5,
-  };
-
+  // Settings
+  // Setting x stepper
   x_steppers[0].stepper.setAcceleration(pref.getDouble(wonder::get_config_string(X_ACCEL)));
+
+  // Setting y stepper
+  for (int i = 0; i < X_STEPPERS; i++) {
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[i][j].setAcceleration(pref.getDouble(wonder::get_config_string(Y_ACCEL)));
+      y_steppers[i][j].setEnablePin(Y_ENABLE_PIN);
+    }
+  }
+
+  ESP_LOGI(TAG, "[%dms] Init motors", esp_log_timestamp());
+
   _home_x(
     pref.getDouble(wonder::get_config_string(X_HOME_SPEED)),
     pref.getDouble(wonder::get_config_string(X_SPEED))
   );
+
+  _home_y(
+    pref.getDouble(wonder::get_config_string(Y_SPEED)),
+    Y_HOME_DURATION
+  );
   
-  ESP_LOGI(TAG, "Motors initialized");
+  ESP_LOGI(TAG, "[%dms] Motors initialized", esp_log_timestamp());
 }
