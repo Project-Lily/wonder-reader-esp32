@@ -1,0 +1,17 @@
+{
+  "files.associations": {
+    "*.html": "html",
+    "*.tcc": "cpp",
+    "deque": "cpp",
+    "string": "cpp",
+    "unordered_map": "cpp",
+    "unordered_set": "cpp",
+    "vector": "cpp",
+    "random": "cpp",
+    "array": "cpp",
+    "memory": "cpp",
+    "initializer_list": "cpp",
+    "motorcontrol.h": "c",
+    "accelstepper.h": "c"
+  }
+}

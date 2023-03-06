@@ -1,10 +1,9 @@
 #include <Arduino.h>
 #include <liblouis.h>
-#include "SPIFFS.h"
 
 void decimalToBinary(widechar num) {   
     if (num == 0) {
-        Serial.print("0");
+        printf("0");
         return;
     }
    
@@ -19,7 +18,7 @@ void decimalToBinary(widechar num) {
    
    // Printing array in reverse order.
    for (int j = i-1; j >= 0; j--)
-      Serial.print(binaryNum[j]);
+      printf("%d", binaryNum[j]);
 }
 void brailleTranslation(std::string input, int offset, int maxlength){
   widechar arr[input.size()];
@@ -33,39 +32,28 @@ void brailleTranslation(std::string input, int offset, int maxlength){
   
   lou_translateString(table_list, arr, &inbuflen, outbuf, &outbuflen, NULL, NULL, 0);
   widechar outbuftranslated[15];
-  Serial.print("Translated string: ");
+  printf("Translated string: ");
   for (int i = 0; i < outbuflen; i++)
-    Serial.print(outbuf[i] + '\n');
+    Serial.print(outbuf[i]);
+  Serial.print('\n');
 
   lou_charToDots(table_list, outbuf, outbuftranslated, outbuflen, 0);
-  Serial.print("Translated string to dot: ");
+  printf("Translated string to dot: ");
   for (int i = 0; i < outbuflen; i++) {
     decimalToBinary(outbuftranslated[i + offset] ^ 32768);
     Serial.print(" ");
   }
-    // Serial.print("%d ", outbuf[i] ^ 32768);
-  Serial.print("\n");
+    // printf("%d ", outbuf[i] ^ 32768);
+  printf("\n");
+
+  widechar outbackbuf[15];
+  lou_dotsToChar(table_list, outbuftranslated, outbackbuf, outbuflen, 0);
+  printf("Translated string back from dot: ");
+  for (int i = 0; i < outbuflen; i++)
+    Serial.print(outbackbuf[i]);
+  Serial.print('\n');
 };
-
 void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);
-  Serial.println("Hello World!");
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    return;
-  }
-
-  File root = SPIFFS.open("/");
-  File file = root.openNextFile();
- 
-  while(file){
- 
-      Serial.print("FILE: ");
-      Serial.println(file.name());
- 
-      file = root.openNextFile();
-  }
   std::string input = "Hello World!";
   brailleTranslation(input, 0, 15);
 }
