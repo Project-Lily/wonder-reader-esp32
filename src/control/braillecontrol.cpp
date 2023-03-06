@@ -1,5 +1,5 @@
 #include "braillecontrol.h"
-#include "AccelStepper.h"
+#include "AccelStepperSR.h"
 #include "driver/gpio.h"
 #include "wonderconfig.h"
 #include "Preferences.h"
@@ -14,22 +14,22 @@
 #define Y_ENABLE_PIN 19
 
 ShiftRegister74HC595<1> sr_x(16, 2, 4);
-wonder::Stepper x_steppers[X_STEPPERS] = {{
+wonder::Stepper<1> x_steppers[X_STEPPERS] = {{
   // NOTE: pins here are for the shift register
-  .stepper = AccelStepper(&sr_x, AccelStepper::FULL4WIRE, 0, 1, 2, 3),
+  .stepper = AccelStepperSR<1>(&sr_x, AccelStepperSR<1>::FULL4WIRE, 0, 1, 2, 3),
   .home_type = wonder::HOMING,
   .limit_pin = GPIO_NUM_5,
 }};
 
-ShiftRegister74HC595<1> sr_y(18, 17, 5);
-AccelStepper y_steppers[X_STEPPERS][BRAILLE_PINS] = {
+ShiftRegister74HC595<2> sr_y(18, 17, 5);
+AccelStepperSR<2> y_steppers[X_STEPPERS][BRAILLE_PINS] = {
   {
-    AccelStepper(&sr_y, AccelStepper::DRIVER, 0, 1),
-    AccelStepper(&sr_y, AccelStepper::DRIVER, 2, 3),
-    AccelStepper(&sr_y, AccelStepper::DRIVER, 4, 5),
-    AccelStepper(&sr_y, AccelStepper::DRIVER, 6, 7),
-    AccelStepper(&sr_y, AccelStepper::DRIVER, 8, 9),
-    AccelStepper(&sr_y, AccelStepper::DRIVER, 10, 11),
+    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 0, 1),
+    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 2, 3),
+    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 4, 5),
+    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 6, 7),
+    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 8, 9),
+    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 10, 11),
   },
 };
 
@@ -81,6 +81,7 @@ void wonder::home_y() {
   _home_x(y_speed, Y_HOME_DURATION);
 }
 
+// TODO: Handle when motors timeout homing
 void wonder::_home_x(double x_home_speed, double x_norm_speed) {
   x_steppers[0].stepper.setMaxSpeed(x_home_speed);
 
@@ -105,7 +106,7 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
       if (milli < x_run_milli[i]) continue;
 
       // NOTE: Has to be a reference. Normal variable won't work
-      wonder::Stepper* st = &x_steppers[i];
+      wonder::Stepper<1>* st = &x_steppers[i];
 
       switch (st->home_type) {
         case HOMING:
@@ -126,6 +127,7 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
           if (!gpio_get_level(st->limit_pin)) {
             ESP_LOGI(TAG, "[%dms]: X Stepper %d successfully homed", esp_log_timestamp(), i);
             st->stepper.setCurrentPosition(0);
+            st->stepper.disableOutputs();
             st->home_type = HOMED;
             st->stepper.setMaxSpeed(x_norm_speed);
           }
@@ -156,7 +158,6 @@ void wonder::home_x() {
   _home_x(x_home_speed, x_norm_speed);
 }
 
-// TODO: Handle when motors timeout homing
 void wonder::init_motors() {
   Preferences pref;
   if (!wonder::get_configuration(&pref)) {

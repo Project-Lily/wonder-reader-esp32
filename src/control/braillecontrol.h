@@ -1,7 +1,7 @@
 #ifndef __MOTORCONTROL_H_
 #define __MOTORCONTROL_H_
 
-#include "AccelStepper.h"
+#include "AccelStepperSR.h"
 #include "driver/gpio.h"
 
 // How many braille cells are in each X axis
@@ -14,11 +14,13 @@ namespace wonder {
     HOMED,      // When the stepper is done moving
   } HomingType;
 
-  typedef struct {
-    AccelStepper stepper;
+  
+  template<uint8_t S>
+  struct Stepper {
+    AccelStepperSR<S> stepper;
     HomingType home_type;
     gpio_num_t limit_pin;
-  } Stepper;
+  };
 
   void _home_x(double x_home_speed, double x_norm_speed);
   void _home_y(double y_speed, long max_home_duration);
