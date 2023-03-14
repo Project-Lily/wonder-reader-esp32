@@ -23,7 +23,7 @@ namespace wonder {
   };
 
   void _home_x(double x_home_speed, double x_norm_speed);
-  void _home_y(double y_speed, long max_home_duration);
+  void _home_y(double y_home_speed, double y_speed, long max_home_duration);
 
   // Initializes the motors
   void init_motors();

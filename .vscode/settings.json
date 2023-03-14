@@ -14,7 +14,8 @@
     "motorcontrol.h": "c",
     "accelstepper.h": "c",
     "fstream": "cpp",
-    "sstream": "cpp"
+    "sstream": "cpp",
+    "*.tpp": "cpp"
   },
   "cmake.configureOnOpen": false
 }

@@ -19,6 +19,7 @@ void wonder::_reset_configuration(Preferences* pref) {
   pref->putDouble(get_config_string(X_HOME_SPEED), DEF_X_HOME_SPEED);
   pref->putDouble(get_config_string(Y_SPEED), DEF_Y_SPEED);
   pref->putDouble(get_config_string(Y_ACCEL), DEF_Y_ACCEL);
+  pref->putDouble(get_config_string(Y_HOME_SPEED), DEF_Y_HOME_SPEED);
   pref->putBool("conf_init", true);
 }
 
@@ -69,4 +70,5 @@ void wonder::print_configuration() {
   ESP_LOGI(TAG, "%s: %f", get_config_string(X_HOME_SPEED), pref.getDouble(get_config_string(X_HOME_SPEED)));
   ESP_LOGI(TAG, "%s: %f", get_config_string(Y_SPEED), pref.getDouble(get_config_string(Y_SPEED)));
   ESP_LOGI(TAG, "%s: %f", get_config_string(Y_ACCEL), pref.getDouble(get_config_string(Y_ACCEL)));
+  ESP_LOGI(TAG, "%s: %f", get_config_string(Y_HOME_SPEED), pref.getDouble(get_config_string(Y_HOME_SPEED)));
 }

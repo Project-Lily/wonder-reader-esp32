@@ -37,15 +37,15 @@ static const char* TAG = "control";
 const char* text = "";
 int offset = 5;
 
-void wonder::_home_y(double y_speed, long max_home_duration) {
+void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration) {
   long home_until = (esp_timer_get_time() / 1000) + max_home_duration;
 
   ESP_LOGI(TAG, "[%dms] Homing Y motors", esp_log_timestamp());
   // Sets speed
   for (int i = 0; i < X_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
-      y_steppers[i][j].setMaxSpeed(y_speed);
-      y_steppers[i][j].setSpeed(y_speed);
+      y_steppers[i][j].setMaxSpeed(y_home_speed);
+      y_steppers[i][j].setSpeed(y_home_speed);
     }
   }
 
@@ -62,6 +62,8 @@ void wonder::_home_y(double y_speed, long max_home_duration) {
   // Set position to 0
   for (int i = 0; i < X_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[i][j].setMaxSpeed(y_speed);
+      y_steppers[i][j].setSpeed(y_speed);
       y_steppers[i][j].setCurrentPosition(0);
       y_steppers[i][j].disableOutputs();
     }
@@ -77,8 +79,9 @@ void wonder::home_y() {
     return;
   }
 
+  double y_home_speed = pref.getDouble(wonder::get_config_string(Y_HOME_SPEED));
   double y_speed = pref.getDouble(wonder::get_config_string(Y_SPEED));
-  _home_x(y_speed, Y_HOME_DURATION);
+  _home_y(y_home_speed, y_speed, Y_HOME_DURATION);
 }
 
 // TODO: Handle when motors timeout homing
@@ -86,12 +89,15 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
   x_steppers[0].stepper.setMaxSpeed(x_home_speed);
 
   // Set speed to be minus because we are homing
-  x_steppers[0].stepper.setSpeed(-x_home_speed);
+  x_steppers[0].stepper.setSpeed(x_home_speed);
 
   ESP_LOGI(TAG, "[%dms] Homing motor X (%d motor(s))", esp_log_timestamp(), X_STEPPERS);
 
   // To keep track when motors should run
   uint64_t x_run_milli[X_STEPPERS];
+  for (int i = 0; i < X_STEPPERS; i++) {
+    x_run_milli[i] = 0;
+  }
 
   // Home all the x steppers
   while (true) {
@@ -185,6 +191,7 @@ void wonder::init_motors() {
   );
 
   _home_y(
+    pref.getDouble(wonder::get_config_string(Y_HOME_SPEED)),
     pref.getDouble(wonder::get_config_string(Y_SPEED)),
     Y_HOME_DURATION
   );
