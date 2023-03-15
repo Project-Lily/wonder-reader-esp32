@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <liblouis.h>
-#include "brailletranslate.h"
+#include "brailletranslate/brailletranslation.h"
+
 void setup() {
   std::string input = "Hello World!";
   wonder::brailleTranslation(input, 0, 15);
