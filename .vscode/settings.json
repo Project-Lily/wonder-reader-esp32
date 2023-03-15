@@ -50,6 +50,9 @@
     "stdexcept": "cpp",
     "streambuf": "cpp",
     "cinttypes": "cpp",
-    "typeinfo": "cpp"
-  }
+    "typeinfo": "cpp",
+    "*.tpp": "cpp"
+  },
+  "cmake.configureOnOpen": false,
+  "C_Cpp.default.cppStandard": "c++20"
 }

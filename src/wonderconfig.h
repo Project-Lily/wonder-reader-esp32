@@ -19,8 +19,9 @@
 #define DEF_X_ACCEL 300.0
 #define DEF_X_HOME_SPEED 420.0
 
-#define DEF_Y_SPEED 40.0
-#define DEF_Y_ACCEL 40.0
+#define DEF_Y_HOME_SPEED 1000.0
+#define DEF_Y_SPEED 10000.0
+#define DEF_Y_ACCEL 10000.0
 
 /**
  * Preprocessor trick for string enum thanks to
@@ -33,6 +34,7 @@
         CONF(X_HOME_SPEED)   \
         CONF(X_SPEED)   \
         CONF(X_ACCEL)   \
+        CONF(Y_HOME_SPEED)   \
         CONF(Y_SPEED)   \
         CONF(Y_ACCEL)   \
 
