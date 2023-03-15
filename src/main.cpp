@@ -1,11 +1,8 @@
 #include <Arduino.h>
-#include <liblouis.h>
+#include <stdio.h>
 #include "brailletranslate/brailletranslation.h"
 #include <SPIFFS.h>
 #include "nvs_flash.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "esp_event.h"
 #include "wonderconfig.h"
@@ -15,9 +12,6 @@
 static const char* TAG = "main";
 
 void setup() {
-  std::string input = "Hello World!";
-  wonder::brailleTranslation(input, 0, 15);
-
   ESP_LOGI(TAG, "Wonder Reader Hello!");
 
   // Initialize NVS
@@ -49,18 +43,13 @@ void setup() {
 
   // wonder::init_motors();
 
-  widechar inbuf[15] = {'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', '!'};
-  int inbuflen = 15;
-  widechar outbuf[15];
-  int outbuflen = 15;
-  const char *table_list = {"en-us-g1.ctb"};
-  widechar outbackbuf[15];
-  widechar outbuftranslated[15];
-  lou_dotsToChar(table_list, outbuftranslated, outbackbuf, outbuflen, 0);
-  ESP_LOGI(TAG, "Translated string back from dot: ");
-  for (int i = 0; i < outbuflen; i++){
-    ESP_LOGI(TAG, "%d", outbackbuf[i]);
+  std::string input = "Hello World!";
+  uint8_t buffer[15];
+  wonder::brailleTranslation(input, 0, 15, buffer);
+  for (int i = 0; i < 15; i++) { 
+    decimalToBinary(buffer[i]);
   }
+
 }
 
 void loop() {

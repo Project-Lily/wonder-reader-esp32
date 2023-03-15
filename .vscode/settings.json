@@ -51,7 +51,8 @@
     "streambuf": "cpp",
     "cinttypes": "cpp",
     "typeinfo": "cpp",
-    "*.tpp": "cpp"
+    "*.tpp": "cpp",
+    "esp_log.h": "c"
   },
   "cmake.configureOnOpen": false,
   "C_Cpp.default.cppStandard": "c++20"
