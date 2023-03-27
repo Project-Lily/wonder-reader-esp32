@@ -33,6 +33,8 @@ bool wonder::init_configuration() {
     return false;
   }
 
+  pref.clear();
+
   // If configuration has not been init, then load all default to config
   if (!pref.getBool("conf_init", false)) {
     _reset_configuration(&pref);

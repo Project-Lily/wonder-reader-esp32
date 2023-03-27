@@ -12,6 +12,7 @@
 static const char* TAG = "main";
 
 void setup() {
+  esp_log_level_set("*", ESP_LOG_INFO);
   ESP_LOGI(TAG, "Wonder Reader Hello!");
 
   // Initialize NVS
@@ -36,20 +37,18 @@ void setup() {
   }
 
   // Initialize main loop
+  // This main loop is initialized so that we can register event handlers.
+  // Without this, event handler will go: Bruh
   ESP_ERROR_CHECK(esp_event_loop_create_default());
-
   wonder::init_network();
-  wonder::init_mdns();
 
-  // wonder::init_motors();
+  wonder::init_motors();
+
+  ESP_LOGI(TAG, "Systems initialized");
 
   std::string input = "Hello World!";
   uint8_t buffer[15];
   wonder::brailleTranslation(input, 0, 15, buffer);
-  for (int i = 0; i < 15; i++) { 
-    decimalToBinary(buffer[i]);
-  }
-
 }
 
 void loop() {

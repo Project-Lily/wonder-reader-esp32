@@ -5,18 +5,31 @@
 #include "esp_event.h"
 #include "esp_system.h"
 #include "esp_netif.h"
-
+#include "esp_http_server.h"
 
 static const char* TAG = "net";
 
-void wonder::init_mdns() {
+extern void register_routes(httpd_handle_t *server);
+
+httpd_handle_t server = NULL;
+httpd_config_t server_conf = HTTPD_DEFAULT_CONFIG();
+
+void init_mdns() {
   const char* hostname = "wreader-1";
 
   // Start mDNS
   ESP_ERROR_CHECK(mdns_init());
   ESP_ERROR_CHECK(mdns_hostname_set(hostname));
   ESP_ERROR_CHECK(mdns_instance_name_set("Wonder Reader 1"));
-  ESP_ERROR_CHECK(mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0));
+
+  // Add the service
+  mdns_txt_item_t wonder1_txt[] = {
+    {"protocol_ver", "1"}, // increment this. No need for semantic versioning
+    {"path", "/connect"},
+  };
+
+  ESP_ERROR_CHECK(mdns_service_add(NULL, "_wonderreader", "_tcp",
+    HTTP_PORT, wonder1_txt, sizeof(wonder1_txt)/sizeof(wonder1_txt[0])));
 
   ESP_LOGI(TAG, "mDNS Initialized. Hostname: %s", hostname);
 }
@@ -28,11 +41,34 @@ void wifi_event_handler(void* arg, esp_event_base_t event_base,
     esp_wifi_connect();
   } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
     ESP_LOGI(TAG, "Disconnected. Attempting to reconnect to Wi-Fi");
+    // stop_server();
     esp_wifi_connect();
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     ip_event_got_ip_t* ip_event = (ip_event_got_ip_t*) event_data;
+    // start_server();
     ESP_LOGI(TAG, "Got IP Address: " IPSTR, IP2STR(&ip_event->ip_info.ip));
   }
+}
+
+void stop_server() {
+  if (server == NULL) return;
+
+  if (httpd_stop(&server) == ESP_OK) {
+    server = NULL;
+    ESP_LOGI(TAG, "HTTP Server stopped");
+  } else {
+    ESP_LOGE(TAG, "Error stopping HTTP server");
+  };
+}
+
+void start_server() {
+  if (server != NULL) return;
+
+  if (httpd_start(&server, &server_conf) == ESP_OK) {
+    ESP_LOGI(TAG, "Started HTTP server at port %d", HTTP_PORT);
+  } else {
+    ESP_LOGE(TAG, "Error starting HTTP server");
+  };
 }
 
 void wonder::init_network() {
@@ -56,5 +92,11 @@ void wonder::init_network() {
   ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
   ESP_ERROR_CHECK(esp_wifi_start());
+
+  init_mdns();
+
+  // Change server config a bit
+  server_conf.server_port = HTTP_PORT;
+
   ESP_LOGI(TAG, "Network initialized");
 }

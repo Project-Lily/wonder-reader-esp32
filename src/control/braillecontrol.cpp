@@ -7,22 +7,23 @@
 #include "ShiftRegister74HC595.h"
 
 #define X_STEPPERS 1
+#define Y_STEPPERS 1
 #define DEBOUNCE_DELAY 1000 // ms
 #define Y_HOME_DURATION 500 // ms
 
 #define BRAILLE_PINS 6 // Braille pin per cell
-#define Y_ENABLE_PIN 19
+#define Y_ENABLE_PIN GPIO_NUM_19
 
 ShiftRegister74HC595<1> sr_x(16, 2, 4);
 wonder::Stepper<1> x_steppers[X_STEPPERS] = {{
   // NOTE: pins here are for the shift register
-  .stepper = AccelStepperSR<1>(&sr_x, AccelStepperSR<1>::FULL4WIRE, 0, 1, 2, 3),
+  .stepper = AccelStepperSR<1>(&sr_x, AccelStepperSR<1>::FULL4WIRE, 2, 4, 0, 3),
   .home_type = wonder::HOMING,
-  .limit_pin = GPIO_NUM_5,
+  .limit_pin = GPIO_NUM_21,
 }};
 
 ShiftRegister74HC595<2> sr_y(18, 17, 5);
-AccelStepperSR<2> y_steppers[X_STEPPERS][BRAILLE_PINS] = {
+AccelStepperSR<2> y_steppers[Y_STEPPERS][BRAILLE_PINS] = {
   {
     AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 0, 1),
     AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 2, 3),
@@ -42,17 +43,18 @@ void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration
 
   ESP_LOGI(TAG, "[%dms] Homing Y motors", esp_log_timestamp());
   // Sets speed
-  for (int i = 0; i < X_STEPPERS; i++) {
+  for (int i = 0; i < Y_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
       y_steppers[i][j].setMaxSpeed(y_home_speed);
       y_steppers[i][j].setSpeed(y_home_speed);
+      y_steppers[i][j].enableOutputs();
     }
   }
 
   // Home all the y steppers. Because they do not have limit switches,
   // We just force all the steppers to the edge.
   while ((esp_timer_get_time() / 1000) <= home_until) {
-    for (int i = 0; i < X_STEPPERS; i++) {
+    for (int i = 0; i < Y_STEPPERS; i++) {
       for (int j = 0; j < BRAILLE_PINS; j++) {
         y_steppers[i][j].runSpeed();
       }
@@ -60,7 +62,7 @@ void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration
   }
 
   // Set position to 0
-  for (int i = 0; i < X_STEPPERS; i++) {
+  for (int i = 0; i < Y_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
       y_steppers[i][j].setMaxSpeed(y_speed);
       y_steppers[i][j].setSpeed(y_speed);
@@ -120,7 +122,7 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
           if (gpio_get_level(st->limit_pin)) {
             ESP_LOGI(TAG, "[%dms] X Stepper %d hit home", esp_log_timestamp(), i);
             st->home_type = RELEASING;
-            st->stepper.setSpeed(x_home_speed);
+            st->stepper.setSpeed(-x_home_speed);
             x_run_milli[i] = milli + DEBOUNCE_DELAY;
           }
 
@@ -149,7 +151,7 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
     }
     if (homed_count == X_STEPPERS) break;
   }
-  ESP_LOGI(TAG, "[%dms]: Carriage motor homed", esp_log_timestamp());
+  ESP_LOGI(TAG, "[%dms]: X motor homed", esp_log_timestamp());
 }
 
 void wonder::home_x() {
@@ -179,7 +181,8 @@ void wonder::init_motors() {
   for (int i = 0; i < X_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
       y_steppers[i][j].setAcceleration(pref.getDouble(wonder::get_config_string(Y_ACCEL)));
-      y_steppers[i][j].setEnablePin(Y_ENABLE_PIN);
+      y_steppers[i][j].setPinsInverted(false, false, true);
+      y_steppers[i][j].setEnablePin(Y_ENABLE_PIN, false);
     }
   }
 
@@ -195,6 +198,9 @@ void wonder::init_motors() {
     pref.getDouble(wonder::get_config_string(Y_SPEED)),
     Y_HOME_DURATION
   );
+
+  // x_steppers[0].stepper.moveTo(-300);
+  x_steppers[0].stepper.runToNewPosition(-2400);
   
   ESP_LOGI(TAG, "[%dms] Motors initialized", esp_log_timestamp());
 }

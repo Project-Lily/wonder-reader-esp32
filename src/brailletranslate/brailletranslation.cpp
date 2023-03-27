@@ -11,7 +11,7 @@ uint8_t charToBraille(uint8_t chr) {
     chr ^= 32;
   }
   switch (chr) {
-    case '(space)': return 0;
+    case ' ': return 0;
     case '!': return 46;
     case '"': return 16;
     case '#': return 60;
