@@ -8,8 +8,14 @@
 #include "wonderconfig.h"
 #include "control/braillecontrol.h"
 #include "network.h"
+#include "Audio.h"
 
 static const char* TAG = "main";
+Audio audio;
+
+#define I2S_DOUT      22
+#define I2S_BCLK      26
+#define I2S_LRC       25
 
 void setup() {
   esp_log_level_set("*", ESP_LOG_INFO);
@@ -44,6 +50,12 @@ void setup() {
 
   wonder::init_motors();
 
+  // Init audio
+  audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
+  audio.setVolume(5);
+
+  audio.connecttohost("https://lilly.arichernando.com/flask/text2speech?text=%22hello+world%22&lang=en-AU&voice-code=en-AU-News-G");
+
   ESP_LOGI(TAG, "Systems initialized");
 
   std::string input = "Hello World!";
@@ -52,5 +64,5 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
+  audio.loop();
 }

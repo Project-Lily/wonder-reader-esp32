@@ -5,13 +5,14 @@
 #include "Preferences.h"
 #include "esp_log.h"
 #include "ShiftRegister74HC595.h"
+#include <Keypad.h>
 
 #define X_STEPPERS 1
 #define Y_STEPPERS 1
 #define DEBOUNCE_DELAY 1000 // ms
-#define Y_HOME_DURATION 500 // ms
+#define Y_HOME_DURATION 2000 // ms
 
-#define BRAILLE_PINS 6 // Braille pin per cell
+#define BRAILLE_PINS 3 // Braille pin per cell
 #define Y_ENABLE_PIN GPIO_NUM_19
 
 ShiftRegister74HC595<1> sr_x(16, 2, 4);
@@ -22,14 +23,14 @@ wonder::Stepper<1> x_steppers[X_STEPPERS] = {{
   .limit_pin = GPIO_NUM_21,
 }};
 
-ShiftRegister74HC595<2> sr_y(18, 17, 5);
+ShiftRegister74HC595<2> sr_y(18, 5, 17);
 AccelStepperSR<2> y_steppers[Y_STEPPERS][BRAILLE_PINS] = {
   {
-    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 0, 1),
-    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 2, 3),
+    // AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 0, 1),
+    // AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 2, 3),
     AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 4, 5),
     AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 6, 7),
-    AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 8, 9),
+    // AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 8, 9),
     AccelStepperSR<2>(&sr_y, AccelStepperSR<2>::DRIVER, 10, 11),
   },
 };
@@ -46,7 +47,7 @@ void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration
   for (int i = 0; i < Y_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
       y_steppers[i][j].setMaxSpeed(y_home_speed);
-      y_steppers[i][j].setSpeed(y_home_speed);
+      y_steppers[i][j].setSpeed(-y_home_speed);
       y_steppers[i][j].enableOutputs();
     }
   }
@@ -61,12 +62,32 @@ void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration
     }
   }
 
+  // Get the stepper to a stable location
+  for (int i = 0; i < Y_STEPPERS; i++) {
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[i][j].setCurrentPosition(0);
+      y_steppers[i][j].setMaxSpeed(y_speed);
+      y_steppers[i][j].setSpeed(y_speed);
+      y_steppers[i][j].moveTo(1450);
+    }
+  }
+
+  while (1) {
+    bool is_end = true;
+    for (int i = 0; i < Y_STEPPERS; i++) {
+      for (int j = 0; j < BRAILLE_PINS; j++) {
+        if (y_steppers[i][j].distanceToGo() != 0) {
+          y_steppers[i][j].run();
+          is_end = false;
+        }
+      }
+    }
+    if (is_end) break;
+  }
+
   // Set position to 0
   for (int i = 0; i < Y_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
-      y_steppers[i][j].setMaxSpeed(y_speed);
-      y_steppers[i][j].setSpeed(y_speed);
-      y_steppers[i][j].setCurrentPosition(0);
       y_steppers[i][j].disableOutputs();
     }
   }
@@ -186,17 +207,19 @@ void wonder::init_motors() {
     }
   }
 
-  ESP_LOGI(TAG, "[%dms] Init motors", esp_log_timestamp());
+  y_steppers[0][2].setPinsInverted(true, false, true);
 
-  _home_x(
-    pref.getDouble(wonder::get_config_string(X_HOME_SPEED)),
-    pref.getDouble(wonder::get_config_string(X_SPEED))
-  );
+  ESP_LOGI(TAG, "[%dms] Init motors", esp_log_timestamp());
 
   _home_y(
     pref.getDouble(wonder::get_config_string(Y_HOME_SPEED)),
     pref.getDouble(wonder::get_config_string(Y_SPEED)),
     Y_HOME_DURATION
+  );
+
+  _home_x(
+    pref.getDouble(wonder::get_config_string(X_HOME_SPEED)),
+    pref.getDouble(wonder::get_config_string(X_SPEED))
   );
 
   // x_steppers[0].stepper.moveTo(-300);
