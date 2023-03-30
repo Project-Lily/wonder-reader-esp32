@@ -79,7 +79,7 @@ uint8_t charToBraille(uint8_t chr) {
   }
 }
 
-void wonder::brailleTranslation(std::string input, int offset, int maxlength, uint8_t *buffer) {
+size_t wonder::brailleTranslation(std::string input, int offset, int maxlength, uint8_t *buffer) {
   // First for pass is to create the braille string representation
   std::string result;
   // Iterate the input string
@@ -135,4 +135,6 @@ void wonder::brailleTranslation(std::string input, int offset, int maxlength, ui
   for (std::string::iterator it = substr.begin(); it != substr.end(); ++it) {
     buffer[it - substr.begin()] = charToBraille(*it);
   }
+
+  return substr.size();
 }

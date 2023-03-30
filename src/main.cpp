@@ -9,9 +9,11 @@
 #include "control/braillecontrol.h"
 #include "network.h"
 #include "Audio.h"
+#include "control/keyboard.h"
 
 static const char* TAG = "main";
 Audio audio;
+Keypad *keyboard;
 
 #define I2S_DOUT      22
 #define I2S_BCLK      26
@@ -42,6 +44,8 @@ void setup() {
     return;
   }
 
+  wonder::init_board();
+
   // Initialize main loop
   // This main loop is initialized so that we can register event handlers.
   // Without this, event handler will go: Bruh
@@ -55,11 +59,11 @@ void setup() {
   audio.setVolume(21);
 
   audio.connecttohost("https://lilly.arichernando.com/flask/text2speech?text=%22hello%22&lang=en-AU&voice-code=en-AU-News-G");
-  // audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
 
   ESP_LOGI(TAG, "Systems initialized");
 }
 
 void loop() {
   audio.loop();
+  wonder::process_events();
 }

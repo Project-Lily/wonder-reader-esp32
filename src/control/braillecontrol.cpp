@@ -23,6 +23,9 @@
 #define X_PIN_NEIGHBOUR_DIST 1530
 #define X_PIN_ADJA_DIST 2550
 
+// How many braille cells are in each X axis
+#define CELL_PER_X_AXIS 9
+
 ShiftRegister74HC595<1> sr_x(16, 2, 4);
 wonder::Stepper<1> x_steppers[X_STEPPERS] = {{
   // NOTE: pins here are for the shift register
@@ -259,22 +262,17 @@ void wonder::init_motors() {
     pref.getDouble(wonder::get_config_string(X_HOME_SPEED)),
     pref.getDouble(wonder::get_config_string(X_SPEED))
   );
+  
+  ESP_LOGI(TAG, "[%dms] Motors initialized", esp_log_timestamp());
+}
 
+void wonder::display_text(std::string text) {
   // Set initial text
-  uint8_t buffer[9] = {0};
-  for (int i = 0; i < 9; i++) {
-    ESP_LOGI(TAG, "bufferino %d: %d", i, buffer[i]);
-  }
-  wonder::brailleTranslation("halo", 0, 9, buffer);
-  uint8_t until = 0;
-  for (int i = 0; i < 9; i++) {
-    ESP_LOGI(TAG, "no %d: %d", i, buffer[i]);
-    if (buffer[i] != 0) {
-      until = i + 1;
-    }
-  }
+  uint8_t buffer[CELL_PER_X_AXIS] = {0};
+  size_t until = wonder::brailleTranslation(text, 0, CELL_PER_X_AXIS, buffer);
 
   for (int i = 0; i < until; i++) {
+    // Move the first set of the braille pins
     uint8_t first = buffer[i] & 7;
     y_steppers[0][1].moveTo((first & 1) ? Y_UP_POS : Y_DOWN_POS);
     y_steppers[0][2].moveTo(((first & 2) >> 1) ? Y_UP_POS : Y_DOWN_POS);
@@ -291,6 +289,7 @@ void wonder::init_motors() {
     x_steppers[0].stepper.move(-X_PIN_NEIGHBOUR_DIST);
     run_x_until_done();
 
+    // Move the second set of the braille pins
     uint8_t second = buffer[i] & 56;
     y_steppers[0][1].moveTo(((second & 8) >> 3) ? Y_UP_POS : Y_DOWN_POS);
     y_steppers[0][2].moveTo(((second & 16) >> 4) ? Y_UP_POS : Y_DOWN_POS);
@@ -306,8 +305,5 @@ void wonder::init_motors() {
 
     x_steppers[0].stepper.move(-X_PIN_ADJA_DIST);
     run_x_until_done();
-
   }
-  
-  ESP_LOGI(TAG, "[%dms] Motors initialized", esp_log_timestamp());
 }

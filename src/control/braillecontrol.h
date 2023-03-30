@@ -3,9 +3,7 @@
 
 #include "AccelStepperSR.h"
 #include "driver/gpio.h"
-
-// How many braille cells are in each X axis
-#define CELL_PER_X_AXIS 9
+#include <string>
 
 namespace wonder {
   typedef enum {
@@ -29,6 +27,8 @@ namespace wonder {
   void init_motors();
   void home_x();
   void home_y();
+
+  void display_text(std::string text);
 }
 
 #endif
