@@ -5,15 +5,23 @@
 #include "Preferences.h"
 #include "esp_log.h"
 #include "ShiftRegister74HC595.h"
+#include "brailletranslate/brailletranslation.h"
 #include <Keypad.h>
 
 #define X_STEPPERS 1
 #define Y_STEPPERS 1
 #define DEBOUNCE_DELAY 1000 // ms
-#define Y_HOME_DURATION 2000 // ms
+#define Y_HOME_DURATION 1200 // ms
 
 #define BRAILLE_PINS 3 // Braille pin per cell
 #define Y_ENABLE_PIN GPIO_NUM_19
+
+#define Y_RESTING_POS 1450
+#define Y_DOWN_POS 2200
+#define Y_UP_POS 0
+
+#define X_PIN_NEIGHBOUR_DIST 1530
+#define X_PIN_ADJA_DIST 2550
 
 ShiftRegister74HC595<1> sr_x(16, 2, 4);
 wonder::Stepper<1> x_steppers[X_STEPPERS] = {{
@@ -38,6 +46,46 @@ AccelStepperSR<2> y_steppers[Y_STEPPERS][BRAILLE_PINS] = {
 static const char* TAG = "control";
 const char* text = "";
 int offset = 5;
+
+void run_y_until_done() {
+  for (int i = 0; i < Y_STEPPERS; i++) {
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[i][j].enableOutputs();
+    }
+  }
+
+  while (1) {
+    bool is_end = true;
+    for (int i = 0; i < Y_STEPPERS; i++) {
+      for (int j = 0; j < BRAILLE_PINS; j++) {
+        if (y_steppers[i][j].distanceToGo() != 0) {
+          y_steppers[i][j].run();
+          is_end = false;
+        }
+      }
+    }
+    if (is_end) break;
+  }
+
+  for (int i = 0; i < Y_STEPPERS; i++) {
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[i][j].disableOutputs();
+    }
+  }
+}
+
+void run_x_until_done() {
+  while (1) {
+    bool is_end = true;
+    for (int i = 0; i < X_STEPPERS; i++) {
+      if (x_steppers[i].stepper.distanceToGo() != 0) {
+        x_steppers[i].stepper.run();
+        is_end = false;
+      }
+    }
+    if (is_end) break;
+  }
+}
 
 void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration) {
   long home_until = (esp_timer_get_time() / 1000) + max_home_duration;
@@ -68,29 +116,19 @@ void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration
       y_steppers[i][j].setCurrentPosition(0);
       y_steppers[i][j].setMaxSpeed(y_speed);
       y_steppers[i][j].setSpeed(y_speed);
-      y_steppers[i][j].moveTo(1450);
+      y_steppers[i][j].moveTo(Y_DOWN_POS);
     }
   }
 
-  while (1) {
-    bool is_end = true;
-    for (int i = 0; i < Y_STEPPERS; i++) {
-      for (int j = 0; j < BRAILLE_PINS; j++) {
-        if (y_steppers[i][j].distanceToGo() != 0) {
-          y_steppers[i][j].run();
-          is_end = false;
-        }
-      }
-    }
-    if (is_end) break;
-  }
+  run_y_until_done();
 
-  // Set position to 0
   for (int i = 0; i < Y_STEPPERS; i++) {
     for (int j = 0; j < BRAILLE_PINS; j++) {
-      y_steppers[i][j].disableOutputs();
+      y_steppers[i][j].moveTo(Y_RESTING_POS);
     }
   }
+
+  run_y_until_done();
 
   ESP_LOGI(TAG, "[%dms] Y motors homed", esp_log_timestamp());
 }
@@ -158,6 +196,7 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
             st->stepper.setCurrentPosition(0);
             st->stepper.disableOutputs();
             st->home_type = HOMED;
+            st->stepper.setSpeed(-x_norm_speed);
             st->stepper.setMaxSpeed(x_norm_speed);
           }
           // Move the stepper towards the limit switch
@@ -204,10 +243,9 @@ void wonder::init_motors() {
       y_steppers[i][j].setAcceleration(pref.getDouble(wonder::get_config_string(Y_ACCEL)));
       y_steppers[i][j].setPinsInverted(false, false, true);
       y_steppers[i][j].setEnablePin(Y_ENABLE_PIN, false);
+      y_steppers[i][j].disableOutputs();
     }
   }
-
-  y_steppers[0][2].setPinsInverted(true, false, true);
 
   ESP_LOGI(TAG, "[%dms] Init motors", esp_log_timestamp());
 
@@ -222,8 +260,54 @@ void wonder::init_motors() {
     pref.getDouble(wonder::get_config_string(X_SPEED))
   );
 
-  // x_steppers[0].stepper.moveTo(-300);
-  x_steppers[0].stepper.runToNewPosition(-2400);
+  // Set initial text
+  uint8_t buffer[9] = {0};
+  for (int i = 0; i < 9; i++) {
+    ESP_LOGI(TAG, "bufferino %d: %d", i, buffer[i]);
+  }
+  wonder::brailleTranslation("halo", 0, 9, buffer);
+  uint8_t until = 0;
+  for (int i = 0; i < 9; i++) {
+    ESP_LOGI(TAG, "no %d: %d", i, buffer[i]);
+    if (buffer[i] != 0) {
+      until = i + 1;
+    }
+  }
+
+  for (int i = 0; i < until; i++) {
+    uint8_t first = buffer[i] & 7;
+    y_steppers[0][1].moveTo((first & 1) ? Y_UP_POS : Y_DOWN_POS);
+    y_steppers[0][2].moveTo(((first & 2) >> 1) ? Y_UP_POS : Y_DOWN_POS);
+    y_steppers[0][0].moveTo(((first & 4) >> 2) ? Y_UP_POS : Y_DOWN_POS);
+
+    run_y_until_done();
+
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[0][j].moveTo(Y_RESTING_POS);
+    }
+
+    run_y_until_done();
+
+    x_steppers[0].stepper.move(-X_PIN_NEIGHBOUR_DIST);
+    run_x_until_done();
+
+    uint8_t second = buffer[i] & 56;
+    y_steppers[0][1].moveTo(((second & 8) >> 3) ? Y_UP_POS : Y_DOWN_POS);
+    y_steppers[0][2].moveTo(((second & 16) >> 4) ? Y_UP_POS : Y_DOWN_POS);
+    y_steppers[0][0].moveTo(((second & 32) >> 5) ? Y_UP_POS : Y_DOWN_POS);
+
+    run_y_until_done();
+
+    for (int j = 0; j < BRAILLE_PINS; j++) {
+      y_steppers[0][j].moveTo(Y_RESTING_POS);
+    }
+
+    run_y_until_done();
+
+    x_steppers[0].stepper.move(-X_PIN_ADJA_DIST);
+    run_x_until_done();
+
+  }
   
   ESP_LOGI(TAG, "[%dms] Motors initialized", esp_log_timestamp());
 }

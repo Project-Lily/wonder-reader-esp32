@@ -52,15 +52,12 @@ void setup() {
 
   // Init audio
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
-  audio.setVolume(5);
+  audio.setVolume(21);
 
-  audio.connecttohost("https://lilly.arichernando.com/flask/text2speech?text=%22hello+world%22&lang=en-AU&voice-code=en-AU-News-G");
+  audio.connecttohost("https://lilly.arichernando.com/flask/text2speech?text=%22hello%22&lang=en-AU&voice-code=en-AU-News-G");
+  // audio.connecttohost("0n-80s.radionetz.de:8000/0n-70s.mp3");
 
   ESP_LOGI(TAG, "Systems initialized");
-
-  std::string input = "Hello World!";
-  uint8_t buffer[15];
-  wonder::brailleTranslation(input, 0, 15, buffer);
 }
 
 void loop() {
