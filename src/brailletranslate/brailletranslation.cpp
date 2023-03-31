@@ -4,8 +4,10 @@
 #include <Arduino.h>
 #include <string>
 
+static const char *TAG = "translation";
+
 // Translates simple braille ready character to its binary form
-uint8_t charToBraille(uint8_t chr) {
+uint8_t charToBraille(char chr) {
   // If letter is lowercase, uppercase it
   if (chr > 96 && chr < 123) {
     chr ^= 32;
@@ -79,7 +81,119 @@ uint8_t charToBraille(uint8_t chr) {
   }
 }
 
-size_t wonder::brailleTranslation(std::string input, int offset, int maxlength, uint8_t *buffer) {
+char brailleToChar(uint8_t chr) {
+ switch (chr) {
+    case 0: return ' ';
+    case 46: return '!';
+    case 16: return '"';
+    case 60: return '#';
+    case 43: return '$';
+    case 41: return '%';
+    case 47: return '&';
+    case 4: return '\'';
+    case 55: return '(';
+    case 62: return ')';
+    case 33: return '*';
+    case 44: return '+';
+    case 32: return ',';
+    case 36: return '-';
+    case 40: return '.';
+    case 12: return '/';
+    case 52: return '0';
+    case 2: return '1';
+    case 6: return '2';
+    case 18: return '3';
+    case 50: return '4';
+    case 34: return '5';
+    case 22: return '6';
+    case 54: return '7';
+    case 38: return '8';
+    case 20: return '9';
+    case 49: return ':';
+    case 48: return ';';
+    case 35: return '<';
+    case 63: return '=';
+    case 28: return '>';
+    case 57: return '?';
+    case 8: return '@';
+    case 1: return 'a';
+    case 3: return 'b';
+    case 9: return 'c';
+    case 25: return 'd';
+    case 17: return 'e';
+    case 11: return 'f';
+    case 27: return 'g';
+    case 19: return 'h';
+    case 10: return 'i';
+    case 26: return 'j';
+    case 5: return 'k';
+    case 7: return 'l';
+    case 13: return 'm';
+    case 29: return 'n';
+    case 21: return 'o';
+    case 15: return 'p';
+    case 31: return 'q';
+    case 23: return 'r';
+    case 14: return 's';
+    case 30: return 't';
+    case 37: return 'u';
+    case 39: return 'v';
+    case 58: return 'w';
+    case 45: return 'x';
+    case 61: return 'y';
+    case 53: return 'z';
+    case 42: return '[';
+    case 51: return '\\';
+    case 59: return ']';
+    case 24: return '^';
+    case 56: return '_';
+    default: return ' ';
+  }
+}
+
+std::string wonder::braille_to_text(uint8_t *buffer, size_t size) {
+  std::string result;
+  for (int i = 0; i < size; i++) {
+    const char chr = brailleToChar(buffer[i]);
+    if (chr == '#') {
+      result.push_back(brailleToChar(buffer[++i]));
+    } else if (chr == ',') {
+      result.push_back(brailleToChar(buffer[++i]) ^ 32);
+    } else {
+      switch(chr) {
+        case '0':
+        result.push_back('"');
+        break;
+      case '1':
+        result.push_back(',');
+        break;
+      case '2':
+        result.push_back(';');
+        break;
+      case '3':
+        result.push_back(':');
+        break;
+      case '4':
+        result.push_back('.');
+        break;
+      case '6':
+        result.push_back('!');
+        break;
+      case '7':
+        result.push_back('|');
+        break;
+      case '8':
+        result.push_back('?');
+        break;
+      default:
+        result.push_back(chr);
+      }
+    }
+  }
+  return result;
+}
+
+size_t wonder::text_to_braille(std::string input, int offset, int maxlength, uint8_t *buffer) {
   // First for pass is to create the braille string representation
   std::string result;
   // Iterate the input string
@@ -92,6 +206,7 @@ size_t wonder::brailleTranslation(std::string input, int offset, int maxlength, 
       result.append(up);
       continue;
     }
+    // If it's a number
     if (chr > 47 && chr < 58) {
       char num[3];
       sprintf(num, "#%c", chr);

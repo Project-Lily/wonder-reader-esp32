@@ -1,6 +1,8 @@
 #include "keyboard.h"
 #include "Keypad.h"
 #include "esp_log.h"
+#include "control/braillecontrol.h"
+#include "sound.h"
 
 #define KEYBOARD_ROWS 4
 #define KEYBOARD_COLS 3
@@ -42,13 +44,14 @@ void wonder::process_events() {
       Key key = __keyboard.key[i];
       if (key.kchar > 48 && key.kchar < 55 && (key.kstate == PRESSED || key.kstate == HOLD)) {
         // Char conversion to number
-        uint8_t brl_key = key.kchar ^ 48;
+        char brl_key = key.kchar ^ 48;
+        ESP_LOGI(TAG, "brl_pressed: %d", brl_key);
         brl_num += 1 << (brl_key - 1);
       }
     }
 
     ESP_LOGI(TAG, "sent: %d", brl_num);
-    // TODO: Send command to braille engine
+    wonder::send_letter(brl_num);
   }
 
   // If there is any keyboard events
@@ -63,6 +66,25 @@ void wonder::process_events() {
         if (braille_key_state == BrailleKeyState::IDLE) {
           braille_key_state = BrailleKeyState::PRESSED;
           send_key_time = cur_milli + WAIT_DURATION;
+        }
+      }
+
+      // Backspace
+      if (key.kstate == PRESSED) {
+        switch (key.kchar) {
+          case 'b':
+            wonder::backspace();
+            break;
+          case ' ':
+            wonder::send_letter(0);
+            break;
+          case 's':
+            ESP_LOGI(TAG, "Playing text: %s", wonder::get_current_text().c_str());
+            wonder::play_text(wonder::get_current_text());
+            ESP_LOGI(TAG, "Playing done");
+            break;
+          default:
+            break;
         }
       }
     }

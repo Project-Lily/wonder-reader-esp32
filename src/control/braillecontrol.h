@@ -29,6 +29,11 @@ namespace wonder {
   void home_y();
 
   void display_text(std::string text);
+  void braille_task(void *pvParameters);
+  void send_letter(uint8_t braille_letter);
+  void backspace();
+
+  std::string get_current_text();
 }
 
 #endif
