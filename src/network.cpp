@@ -1,15 +1,19 @@
 #include "network.h"
 #include "secret.h"
 // #include <mdns.h>
-// #include "esp_log.h"
+#include "esp_log.h"
 // #include "esp_wifi.h"
 // #include "esp_event.h"
 // #include "esp_system.h"
 // #include "esp_netif.h"
 // #include "esp_http_server.h"
 #include "WiFi.h"
+// #include "esp_event.h"
+// #include "esp_websocket_client.h"
 
 static const char* TAG = "net";
+
+// static esp_websocket_client_handle_t ws_client;
 
 // extern void register_routes(httpd_handle_t *server);
 
@@ -111,4 +115,38 @@ void wonder::init_network() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   ESP_LOGI(TAG, "Network initialized");
+}
+
+// static void student_mode_ws_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+//   esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
+
+//   switch (event_id) {
+//     case WEBSOCKET_EVENT_CONNECTED:
+//       ESP_LOGI(TAG, "Student connected");
+//       break;
+//     case WEBSOCKET_EVENT_DISCONNECTED:
+//       ESP_LOGI(TAG, "Student disconnected");
+//       break;
+//     case WEBSOCKET_EVENT_DATA:
+//       ESP_LOGI(TAG, "Received websocket data: %.*s", data->data_len, (char*)data->data_ptr);
+//       break;
+//     case WEBSOCKET_EVENT_ERROR:
+//       ESP_LOGE(TAG, "Websocket student mode error");
+//       break;
+//   }
+// }
+
+void wonder::init_student_mode() {
+//   ESP_LOGI(TAG, "Initializing student mode");
+//   esp_websocket_client_config_t config = {
+//     .uri = "wss://lilly.arichernando.com/flask",
+//     .disable_auto_reconnect = false,
+//     .cert_pem = NULL,
+
+//   };
+
+//   ws_client = esp_websocket_client_init(&config);
+//   esp_websocket_register_events(ws_client, WEBSOCKET_EVENT_ANY, student_mode_ws_handler, NULL);
+//   esp_websocket_client_start(ws_client);
+//   ESP_LOGI(TAG, "Student mode activated");
 }

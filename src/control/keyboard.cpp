@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "control/braillecontrol.h"
 #include "sound.h"
+#include "network.h"
 
 #define KEYBOARD_ROWS 4
 #define KEYBOARD_COLS 3
@@ -82,6 +83,9 @@ void wonder::process_events() {
             ESP_LOGI(TAG, "Playing text: %s", wonder::get_current_text().c_str());
             wonder::play_text(wonder::get_current_text());
             ESP_LOGI(TAG, "Playing done");
+            break;
+          case 'm':
+            wonder::init_student_mode();
             break;
           default:
             break;

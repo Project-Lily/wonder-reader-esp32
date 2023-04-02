@@ -3,6 +3,8 @@
 
 #include "Preferences.h"
 
+// #define TEST_NO_MOVE_MODE
+
 /** 
  * Stepper stepper / mm config
  */
@@ -21,7 +23,7 @@
 
 #define DEF_Y_HOME_SPEED 4000.0
 #define DEF_Y_SPEED 10000.0
-#define DEF_Y_ACCEL 4000.0
+#define DEF_Y_ACCEL 6000.0
 
 /**
  * Preprocessor trick for string enum thanks to

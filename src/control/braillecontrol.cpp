@@ -21,12 +21,13 @@
 #define BRAILLE_PINS 3 // Braille pin per cell
 #define Y_ENABLE_PIN GPIO_NUM_19
 
-#define Y_RESTING_POS 1450
+#define Y_RESTING_POS 1370
 #define Y_DOWN_POS 2200
 #define Y_UP_POS 0
 
-#define X_PIN_NEIGHBOUR_DIST 1530
-#define X_PIN_ADJA_DIST 2550
+#define X_PIN_NEIGHBOUR_DIST 1630 // Baseline 1800
+#define X_PIN_ADJA_DIST 2645 // baseline 3000
+#define X_PIN_OFFSET 200
 
 // How many braille cells are in each X axis
 #define CELL_PER_X_AXIS 9
@@ -187,13 +188,15 @@ void change_letter(uint8_t letter) {
 
     run_y_until_done();
 
-    x_steppers[0].stepper.move(-X_PIN_ADJA_DIST);
-    run_x_until_done();
+    if (cursor_pos < TOTAL_CELLS) {
+      x_steppers[0].stepper.move(-X_PIN_ADJA_DIST);
+      run_x_until_done();
+    }
 }
 
 void go_to_position(uint32_t position) {
+  ESP_LOGI(TAG, "Going to position %d", position);
   x_steppers[0].stepper.move((cursor_pos - position) * X_PIN_ADJA_DIST);
-  cursor_pos = position;
   run_x_until_done();
 }
 
@@ -275,6 +278,12 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
     }
     if (homed_count == X_STEPPERS) break;
   }
+  
+  for (int i = 0; i < X_STEPPERS; i++) {
+    x_steppers[i].stepper.move(-X_PIN_OFFSET);
+  }
+  run_x_until_done();
+
   ESP_LOGI(TAG, "[%dms]: X motor homed", esp_log_timestamp());
 }
 
@@ -314,16 +323,18 @@ void wonder::init_motors() {
 
   ESP_LOGI(TAG, "[%dms] Init motors", esp_log_timestamp());
 
-  // _home_y(
-  //   pref.getDouble(wonder::get_config_string(Y_HOME_SPEED)),
-  //   pref.getDouble(wonder::get_config_string(Y_SPEED)),
-  //   Y_HOME_DURATION
-  // );
+  #ifndef TEST_NO_MOVE_MODE
+  _home_y(
+    pref.getDouble(wonder::get_config_string(Y_HOME_SPEED)),
+    pref.getDouble(wonder::get_config_string(Y_SPEED)),
+    Y_HOME_DURATION
+  );
 
-  // _home_x(
-  //   pref.getDouble(wonder::get_config_string(X_HOME_SPEED)),
-  //   pref.getDouble(wonder::get_config_string(X_SPEED))
-  // );
+  _home_x(
+    pref.getDouble(wonder::get_config_string(X_HOME_SPEED)),
+    pref.getDouble(wonder::get_config_string(X_SPEED))
+  );
+  #endif
   
   ESP_LOGI(TAG, "[%dms] Motors initialized", esp_log_timestamp());
 }
@@ -334,12 +345,25 @@ void wonder::braille_task(void *pvParameters) {
 
     bool complete = false;
     while (!complete) {
+      // Disable watchdog
+      // disableCore1WDT();
+
+      ESP_LOGI(TAG, "cur pos: %d", cursor_pos);
       // Check if the current position needs to be changed
       if (target_display[cursor_pos] != current_display[cursor_pos]) {
         // Move motors
-        // change_letter(target_display[cursor_pos]);
+#ifndef TEST_NO_MOVE_MODE
+        change_letter(target_display[cursor_pos]);
+#endif  
         ESP_LOGI(TAG, "Changing letter %d to %d", current_display[cursor_pos], target_display[cursor_pos]);
         current_display[cursor_pos] = target_display[cursor_pos];
+
+        // Change letter only advances if not at the end
+        if (cursor_pos < TOTAL_CELLS - 1) {
+          cursor_pos++;
+          ESP_LOGI(TAG, "cur pos now: %d", cursor_pos);
+          continue;
+        }
       }
 
       // Center expand algorithm
@@ -350,10 +374,11 @@ void wonder::braille_task(void *pvParameters) {
           continue;
         }
         if (target_display[i_check] != current_display[i_check]) {
-          // go_to_position(i_check);
+#ifndef TEST_NO_MOVE_MODE
+          go_to_position(i_check);
+#endif
           cursor_pos = i_check;
           ESP_LOGI(TAG, "Going to position %d", i_check);
-          current_display[cursor_pos] = target_display[cursor_pos];
           break;
         }
       }
@@ -365,6 +390,8 @@ void wonder::braille_task(void *pvParameters) {
           complete = false;
         }
       }
+      // enableCore1WDT();
+      vTaskDelay(pdMS_TO_TICKS(100));
     }
 
     ESP_LOGI(TAG, "Algo done! Text now: ");
@@ -398,46 +425,4 @@ void wonder::backspace() {
   full_text.pop_back();
   update_target_display();
   xEventGroupSetBits(display_event, KEY_BIT);
-}
-
-void wonder::display_text(std::string text) {
-  // Set initial text
-  uint8_t buffer[CELL_PER_X_AXIS] = {0};
-  size_t until = wonder::text_to_braille(text, 0, CELL_PER_X_AXIS, buffer);
-
-  for (int i = 0; i < until; i++) {
-    // Move the first set of the braille pins
-    uint8_t first = buffer[i] & 7;
-    y_steppers[0][1].moveTo((first & 1) ? Y_UP_POS : Y_DOWN_POS);
-    y_steppers[0][2].moveTo(((first & 2) >> 1) ? Y_UP_POS : Y_DOWN_POS);
-    y_steppers[0][0].moveTo(((first & 4) >> 2) ? Y_UP_POS : Y_DOWN_POS);
-
-    run_y_until_done();
-
-    for (int j = 0; j < BRAILLE_PINS; j++) {
-      y_steppers[0][j].moveTo(Y_RESTING_POS);
-    }
-
-    run_y_until_done();
-
-    x_steppers[0].stepper.move(-X_PIN_NEIGHBOUR_DIST);
-    run_x_until_done();
-
-    // Move the second set of the braille pins
-    uint8_t second = buffer[i] & 56;
-    y_steppers[0][1].moveTo(((second & 8) >> 3) ? Y_UP_POS : Y_DOWN_POS);
-    y_steppers[0][2].moveTo(((second & 16) >> 4) ? Y_UP_POS : Y_DOWN_POS);
-    y_steppers[0][0].moveTo(((second & 32) >> 5) ? Y_UP_POS : Y_DOWN_POS);
-
-    run_y_until_done();
-
-    for (int j = 0; j < BRAILLE_PINS; j++) {
-      y_steppers[0][j].moveTo(Y_RESTING_POS);
-    }
-
-    run_y_until_done();
-
-    x_steppers[0].stepper.move(-X_PIN_ADJA_DIST);
-    run_x_until_done();
-  }
 }

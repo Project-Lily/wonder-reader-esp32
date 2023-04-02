@@ -15,6 +15,9 @@ struct SoundTaskParam {
   std::string text;
 };
 
+bool should_play_text = false;
+std::string text_to_play = "";
+
 Audio audio;
 SemaphoreHandle_t play_sound_semaphore;
 SoundTaskParam sound_task_param;
@@ -29,6 +32,10 @@ void wonder::init_sound() {
 
 void wonder::loop_sound() {
   xSemaphoreTake(play_sound_semaphore, portMAX_DELAY);
+  if (should_play_text) {
+    should_play_text = false;
+    audio.connecttohost(text_to_play.c_str());
+  }
   audio.loop();
   xSemaphoreGive(play_sound_semaphore);
 }
@@ -50,7 +57,9 @@ void wonder::play_text(std::string text) {
   builder.append(text_temp);
   builder.append("%22&lang=en-AU&voice-code=en-AU-News-G");
   sound_task_param.text = builder;
-  audio.connecttohost(builder.c_str());
+  text_to_play = builder;
+  should_play_text = true;
+  // audio.connecttohost(builder.c_str());
   // ESP_LOGI(TAG, "Will create sound task: %s", sound_task_param.text.c_str());
   // if (xSemaphoreTake(play_sound_semaphore, pdMS_TO_TICKS(1000)) == pdTRUE) {
   //   xTaskCreate(create_host_sound_task, "Sound task", 4096, NULL, 1, NULL);

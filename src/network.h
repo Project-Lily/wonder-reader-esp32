@@ -6,6 +6,7 @@
 
 namespace wonder {
   void init_network();
+  void init_student_mode();
 }
 
 #endif
