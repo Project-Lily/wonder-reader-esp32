@@ -426,3 +426,13 @@ void wonder::backspace() {
   update_target_display();
   xEventGroupSetBits(display_event, KEY_BIT);
 }
+
+void wonder::display_text(std::string new_text) {
+  display_offset = 0;
+  uint8_t buffer[new_text.length()];
+  text_to_braille(new_text, 0, new_text.length(), buffer);
+  full_text.clear();
+  full_text.insert(full_text.end(), buffer, buffer + new_text.length());
+  update_target_display();
+  xEventGroupSetBits(display_event, KEY_BIT);
+}

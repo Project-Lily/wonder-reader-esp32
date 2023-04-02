@@ -6,6 +6,8 @@ This repository contains the code that will be used in the ESP32 microcontroller
 - ShiftRegister74HC595
 - ESP32-audioI2S
 - Keypad
+- AccelStepper
+- ArduinoJSON
 - Arduino for ESP32
 
 # Usage

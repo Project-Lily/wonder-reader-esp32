@@ -8,12 +8,16 @@
 // #include "esp_netif.h"
 // #include "esp_http_server.h"
 #include "WiFi.h"
-// #include "esp_event.h"
-// #include "esp_websocket_client.h"
+#include "esp_event.h"
+#include "esp_websocket_client.h"
+#include "esp_http_client.h"
+#include <ArduinoJson.h>
+#include <string>
+#include "control/braillecontrol.h"
 
 static const char* TAG = "net";
 
-// static esp_websocket_client_handle_t ws_client;
+static esp_websocket_client_handle_t ws_client;
 
 // extern void register_routes(httpd_handle_t *server);
 
@@ -117,36 +121,81 @@ void wonder::init_network() {
   ESP_LOGI(TAG, "Network initialized");
 }
 
-// static void student_mode_ws_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
-//   esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
+bool room_connected = false;
 
-//   switch (event_id) {
-//     case WEBSOCKET_EVENT_CONNECTED:
-//       ESP_LOGI(TAG, "Student connected");
-//       break;
-//     case WEBSOCKET_EVENT_DISCONNECTED:
-//       ESP_LOGI(TAG, "Student disconnected");
-//       break;
-//     case WEBSOCKET_EVENT_DATA:
-//       ESP_LOGI(TAG, "Received websocket data: %.*s", data->data_len, (char*)data->data_ptr);
-//       break;
-//     case WEBSOCKET_EVENT_ERROR:
-//       ESP_LOGE(TAG, "Websocket student mode error");
-//       break;
-//   }
-// }
+esp_err_t http_event_handler(esp_http_client_event_t *ev) {
+  return ESP_OK;
+}
+
+void join_room(void *pvParameters) {
+  char *id = (char*)pvParameters;
+  esp_http_client_config_t conf = {
+    .url = "https://lilly.arichernando.com/flask/student/join",
+    .method = HTTP_METHOD_POST,
+    .event_handler = http_event_handler,
+  };
+
+  esp_http_client_handle_t request = esp_http_client_init(&conf);
+  esp_http_client_set_header(request, "Content-Type", "application/json");
+
+  std::string data = "{\"id\": \"";
+  data.append(id);
+  data.append("\", \"name\": \"wonder\"}");
+
+  esp_http_client_set_post_field(request, data.c_str(), data.length());
+
+  esp_err_t err = esp_http_client_perform(request);
+
+  if (err == ESP_OK) {
+    ESP_LOGI(TAG, "Successfully joined room");
+    room_connected = true;
+  } else {
+    ESP_LOGE(TAG, "Failed to join room.");
+  }
+
+  esp_http_client_cleanup(request);
+  vTaskDelete(NULL);
+}
+
+static void student_mode_ws_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
+  esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
+  DynamicJsonDocument doc(100);
+
+  switch (event_id) {
+    case WEBSOCKET_EVENT_CONNECTED:
+      ESP_LOGI(TAG, "Student connected");
+      break;
+    case WEBSOCKET_EVENT_DISCONNECTED:
+      ESP_LOGI(TAG, "Student disconnected");
+      break;
+    case WEBSOCKET_EVENT_DATA:
+      ESP_LOGI(TAG, "Received websocket data: %.*s", data->data_len, (char*)data->data_ptr);
+      // Parse json
+      deserializeJson(doc, (char*)data->data_ptr);
+      char *data = doc["data"];
+      if (room_connected) {
+        std::string text(data);
+        wonder::display_text(text);
+      } else {
+        xTaskCreatePinnedToCore(join_room, "Join Room Task", 2048, data, 1, NULL, 0);
+      }
+      break;
+    case WEBSOCKET_EVENT_ERROR:
+      ESP_LOGE(TAG, "Websocket student mode error");
+      break;
+  }
+}
 
 void wonder::init_student_mode() {
-//   ESP_LOGI(TAG, "Initializing student mode");
-//   esp_websocket_client_config_t config = {
-//     .uri = "wss://lilly.arichernando.com/flask",
-//     .disable_auto_reconnect = false,
-//     .cert_pem = NULL,
+  ESP_LOGI(TAG, "Initializing student mode");
+  esp_websocket_client_config_t config = {
+    .uri = "wss://lilly.arichernando.com/flask",
+    .disable_auto_reconnect = false,
+    .cert_pem = NULL,
+  };
 
-//   };
-
-//   ws_client = esp_websocket_client_init(&config);
-//   esp_websocket_register_events(ws_client, WEBSOCKET_EVENT_ANY, student_mode_ws_handler, NULL);
-//   esp_websocket_client_start(ws_client);
-//   ESP_LOGI(TAG, "Student mode activated");
+  ws_client = esp_websocket_client_init(&config);
+  esp_websocket_register_events(ws_client, WEBSOCKET_EVENT_ANY, student_mode_ws_handler, NULL);
+  esp_websocket_client_start(ws_client);
+  ESP_LOGI(TAG, "Student mode activated");
 }
