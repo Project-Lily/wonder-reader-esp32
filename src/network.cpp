@@ -159,7 +159,6 @@ void join_room(void *pvParameters) {
 
 static void student_mode_ws_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data) {
   esp_websocket_event_data_t *data = (esp_websocket_event_data_t *)event_data;
-  DynamicJsonDocument doc(100);
 
   switch (event_id) {
     case WEBSOCKET_EVENT_CONNECTED:
@@ -169,17 +168,20 @@ static void student_mode_ws_handler(void *handler_args, esp_event_base_t base, i
       ESP_LOGI(TAG, "Student disconnected");
       break;
     case WEBSOCKET_EVENT_DATA:
+    {
       ESP_LOGI(TAG, "Received websocket data: %.*s", data->data_len, (char*)data->data_ptr);
+      DynamicJsonDocument doc(100);
       // Parse json
       deserializeJson(doc, (char*)data->data_ptr);
-      char *data = doc["data"];
+      const char *data = doc["data"];
       if (room_connected) {
         std::string text(data);
         wonder::display_text(text);
       } else {
-        xTaskCreatePinnedToCore(join_room, "Join Room Task", 2048, data, 1, NULL, 0);
+        xTaskCreatePinnedToCore(join_room, "Join Room Task", 2048, (void*)data, 1, NULL, 0);
       }
       break;
+    }
     case WEBSOCKET_EVENT_ERROR:
       ESP_LOGE(TAG, "Websocket student mode error");
       break;
