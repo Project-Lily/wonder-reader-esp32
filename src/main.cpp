@@ -1,25 +1,24 @@
 #include <Arduino.h>
-#include <stdio.h>
-#include "brailletranslate/brailletranslation.h"
 #include <SPIFFS.h>
+#include "brailletranslate/brailletranslation.h"
 #include "nvs_flash.h"
 #include "esp_log.h"
 #include "esp_event.h"
 #include "freertos/task.h"
 #include "wonderconfig.h"
-#include "control/braillecontrol.h"
+// #include "control/braillecontrol.h"
 #include "network.h"
-#include "control/keyboard.h"
-#include "sound.h"
+// #include "control/keyboard.h"
+// #include "sound.h"
 
 static const char* TAG = "main";
 
-void main_loop(void *pvParameters) {
-  while (1) {
-    vTaskDelay(pdMS_TO_TICKS(10));
-    wonder::process_events();
-  }
-}
+// void main_loop(void *pvParameters) {
+//   while (1) {
+//     vTaskDelay(pdMS_TO_TICKS(10));
+//     wonder::process_events();
+//   }
+// }
 
 void setup() {
   esp_log_level_set("*", ESP_LOG_INFO);
@@ -46,25 +45,24 @@ void setup() {
     return;
   }
 
-  disableCore1WDT();
+  // disableCore1WDT();
 
   // Initialize main loop
   // This main loop is initialized so that we can register event handlers.
   // Without this, event handler will go: Bruh
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-  wonder::init_board();
+  // wonder::init_board();
   wonder::init_network();
-  wonder::init_motors();
-  wonder::init_sound();
+  // wonder::init_motors();
+  // wonder::init_sound();
 
-
-  xTaskCreatePinnedToCore(wonder::braille_task, "Braille Task", 2048, NULL, configMAX_PRIORITIES - 1, NULL, 1);
-  xTaskCreatePinnedToCore(main_loop, "Main Loop Task", 2048, NULL, 1, NULL, 0);
+  // xTaskCreatePinnedToCore(wonder::braille_task, "Braille Task", 2048, NULL, configMAX_PRIORITIES - 1, NULL, 1);
+  // xTaskCreatePinnedToCore(main_loop, "Main Loop Task", 2048, NULL, 1, NULL, 0);
 
   ESP_LOGI(TAG, "Systems initialized, %d tasks running", uxTaskGetNumberOfTasks());
 }
 
 void loop() {
-  wonder::loop_sound();
+  // wonder::loop_sound();
 }
