@@ -12,8 +12,6 @@
 
 static const char* TAG = "net";
 
-static esp_websocket_client_handle_t ws_client;
-
 httpd_handle_t server = NULL;
 httpd_config_t server_conf = HTTPD_DEFAULT_CONFIG();
 

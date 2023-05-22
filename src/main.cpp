@@ -6,8 +6,9 @@
 #include "esp_event.h"
 #include "freertos/task.h"
 #include "wonderconfig.h"
-// #include "control/braillecontrol.h"
 #include "network.h"
+#include "bluetooth/bluetooth.h"
+// #include "control/braillecontrol.h"
 // #include "control/keyboard.h"
 // #include "sound.h"
 
@@ -54,6 +55,7 @@ void setup() {
 
   // wonder::init_board();
   wonder::init_network();
+  wonder::init_bt();
   // wonder::init_motors();
   // wonder::init_sound();
 
@@ -63,6 +65,15 @@ void setup() {
   ESP_LOGI(TAG, "Systems initialized, %d tasks running", uxTaskGetNumberOfTasks());
 }
 
+long nextSend = 0;
+long interval = 5000;
 void loop() {
   // wonder::loop_sound();
+  long milli = millis();
+  if (milli > nextSend) {
+    char buf[500];
+    size_t len = sprintf(buf, "Cur time Indicate that the current time is this value. However, i am padding out this message in order to test the chunking capabilities of the newly implemented GATT read chunked method.: %ld", esp_timer_get_time() / 1000);
+    wonder::send_answer(buf, len);
+    nextSend = milli + interval;
+  }
 }

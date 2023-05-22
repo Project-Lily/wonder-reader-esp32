@@ -56,5 +56,5 @@
   },
   "cmake.configureOnOpen": false,
   "C_Cpp.default.cppStandard": "c++20",
-  "C_Cpp.errorSquiggles": "disabled"
+  "C_Cpp.errorSquiggles": "enabled"
 }
