@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "NimBLEDevice.h"
+#include "control/braillecontrol.h"
 
 static const char* TAG = "bluetooth";
 static const char* GATTS_TAG = "GATT Server";
@@ -10,7 +11,7 @@ static const char* GAP_TAG = "GAP";
 
 static NimBLEServer* pServer;
 
-class BluetoothReadChunked: public NimBLECharacteristicCallbacks {
+class BluetoothReadChunked: virtual public NimBLECharacteristicCallbacks {
   String _value;
   size_t _len;
   size_t _offset;
@@ -50,6 +51,25 @@ class BluetoothReadChunked: public NimBLECharacteristicCallbacks {
   }
 };
 
+class BluetoothWriteChunked: virtual public NimBLECharacteristicCallbacks {
+  String _builder;
+
+  virtual void onChunkedWrite(const char* data) = 0;
+
+  void onWrite(NimBLECharacteristic* pCharacteristic) {
+    const char* data = pCharacteristic->getValue().c_str();
+    ESP_LOGI(TAG, "Received |%s| len=%d lastchar=%c", data, strlen(data), data[strlen(data) - 1]);
+    // Look for a terminator
+    if (data[strlen(data) - 1] == 1) {
+      _builder.concat(data, strlen(data) - 1);
+      onChunkedWrite(_builder.c_str());
+      _builder.clear();
+    } else {
+      _builder.concat(data);
+    }
+  }
+};
+
 class CharacteristicTest: public NimBLECharacteristicCallbacks {
   void onRead(NimBLECharacteristic* pCharacteristic) {
     // Set characteristic as current time
@@ -61,10 +81,12 @@ class CharacteristicTest: public NimBLECharacteristicCallbacks {
   }
 };
 
-class CharacteristicAnswer: public BluetoothReadChunked {
-  void onWrite(NimBLECharacteristic* pCharacteristic) {
-    ESP_LOGI(TAG, "Write request: %s", + pCharacteristic->getValue().c_str());
+class CharacteristicAnswer: public BluetoothWriteChunked, public BluetoothReadChunked {
+  void onChunkedWrite(const char* data) {
+    ESP_LOGI(TAG, "Chunked write request: %s", data);
+    // wonder::display_text(data);
   }
+
 };
 
 static CharacteristicTest testCallback;
