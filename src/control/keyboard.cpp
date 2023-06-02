@@ -6,7 +6,7 @@
 #include "network.h"
 
 #define KEYBOARD_ROWS 4
-#define KEYBOARD_COLS 3
+#define KEYBOARD_COLS 4
 
 #define WAIT_DURATION 66
 
@@ -15,10 +15,10 @@ enum class BrailleKeyState { IDLE, PRESSED, KEYSENT };
 const char* TAG = "keyboard";
 
 char keys[KEYBOARD_ROWS][KEYBOARD_COLS] = {
-    {'1', 'm', '4'}, // 36
-    {' ', '?', 'b'}, // 39
-    {'2', 's', '5'}, // 34
-    {'3', '!', '6'}  // 35
+    {'1', 'm', '4', 'w'}, // 36
+    {' ', '?', 'b', 'a'}, // 39
+    {'2', 'p', '5', 's'}, // 34
+    {'3', '!', '6', 'd'}  // 35
   //  32   33   27
 };
 
@@ -79,13 +79,19 @@ void wonder::process_events() {
           case ' ':
             wonder::send_letter(0);
             break;
-          case 's':
+          case 'p':
             ESP_LOGI(TAG, "Playing text: %s", wonder::get_current_text().c_str());
             wonder::play_text(wonder::get_current_text());
             ESP_LOGI(TAG, "Playing done");
             break;
           case 'm':
-            wonder::init_student_mode();
+            // wonder::init_student_mode();
+            break;
+          case 'w':
+            wonder::up_page();
+            break;
+          case 's':
+            wonder::down_page();
             break;
           default:
             break;

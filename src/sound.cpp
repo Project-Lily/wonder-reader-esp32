@@ -2,6 +2,7 @@
 #include "Audio.h"
 #include <string>
 #include <algorithm>
+#include <SPIFFS.h>
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
@@ -64,4 +65,8 @@ void wonder::play_text(std::string text) {
   // if (xSemaphoreTake(play_sound_semaphore, pdMS_TO_TICKS(1000)) == pdTRUE) {
   //   xTaskCreate(create_host_sound_task, "Sound task", 4096, NULL, 1, NULL);
   // }
+}
+
+void wonder::play_file(const char* path) {
+  audio.connecttoFS(SPIFFS, path);
 }

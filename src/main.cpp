@@ -8,18 +8,11 @@
 #include "wonderconfig.h"
 #include "network.h"
 #include "bluetooth/bluetooth.h"
-// #include "control/braillecontrol.h"
-// #include "control/keyboard.h"
-// #include "sound.h"
+#include "control/braillecontrol.h"
+#include "control/keyboard.h"
+#include "sound.h"
 
 static const char* TAG = "main";
-
-// void main_loop(void *pvParameters) {
-//   while (1) {
-//     vTaskDelay(pdMS_TO_TICKS(10));
-//     wonder::process_events();
-//   }
-// }
 
 void setup() {
   esp_log_level_set("*", ESP_LOG_INFO);
@@ -53,27 +46,31 @@ void setup() {
   // Without this, event handler will go: Bruh
   ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-  // wonder::init_board();
+  wonder::init_board();
   wonder::init_network();
   wonder::init_bt();
-  // wonder::init_motors();
-  // wonder::init_sound();
+  wonder::init_motors();
+  wonder::init_sound();
 
-  // xTaskCreatePinnedToCore(wonder::braille_task, "Braille Task", 2048, NULL, configMAX_PRIORITIES - 1, NULL, 1);
-  // xTaskCreatePinnedToCore(main_loop, "Main Loop Task", 2048, NULL, 1, NULL, 0);
+  xTaskCreatePinnedToCore(wonder::braille_task, "Braille Task", 2048, NULL, configMAX_PRIORITIES - 1, NULL, 1);
 
-  ESP_LOGI(TAG, "Systems initialized, %d tasks running", uxTaskGetNumberOfTasks());
+  int taskCount = uxTaskGetNumberOfTasks();
+  ESP_LOGI(TAG, "Systems initialized, %d tasks running", taskCount);
+  TaskStatus_t* taskStatusArray = (TaskStatus_t*)malloc(sizeof(TaskStatus_t) * taskCount);
+
+  wonder::display_text("Hello!");
 }
 
-long nextSend = 0;
-long interval = 5000;
+// long nextSend = 0;
+// long interval = 5000;
 void loop() {
-  // wonder::loop_sound();
-  long milli = millis();
-  if (milli > nextSend) {
-    char buf[500];
-    size_t len = sprintf(buf, "Cur time Indicate that the current time is this value. However, i am padding out this message in order to test the chunking capabilities of the newly implemented GATT read chunked method.: %ld", esp_timer_get_time() / 1000);
-    wonder::send_answer(buf, len);
-    nextSend = milli + interval;
-  }
+  wonder::loop_sound();
+  // long milli = millis();
+  // if (milli > nextSend) {
+  //   char buf[128];
+  //   size_t len = sprintf(buf, "{\"event\": \"answer\", \"data\": {\"time\": %d}}", esp_timer_get_time() / 1000);
+  //   wonder::send_answer(buf, len);
+  //   nextSend = milli + interval;
+  // }
+  // wonder::process_events();
 }

@@ -17,13 +17,13 @@
  */
 #define DEF_LIMIT_TO_CELL 15.0
 
-#define DEF_X_SPEED 350.0
-#define DEF_X_ACCEL 250.0
-#define DEF_X_HOME_SPEED 350.0
+#define DEF_X_SPEED 1200.0
+#define DEF_X_ACCEL 1200.0
+#define DEF_X_HOME_SPEED 700.0
 
 #define DEF_Y_HOME_SPEED 4000.0
-#define DEF_Y_SPEED 10000.0
-#define DEF_Y_ACCEL 6000.0
+#define DEF_Y_SPEED 15000.0
+#define DEF_Y_ACCEL 10000.0
 
 /**
  * Preprocessor trick for string enum thanks to

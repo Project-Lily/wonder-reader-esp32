@@ -4,6 +4,7 @@
 #include "esp_timer.h"
 #include "NimBLEDevice.h"
 #include "control/braillecontrol.h"
+#include "sound.h"
 
 static const char* TAG = "bluetooth";
 static const char* GATTS_TAG = "GATT Server";
@@ -84,9 +85,15 @@ class CharacteristicTest: public NimBLECharacteristicCallbacks {
 class CharacteristicAnswer: public BluetoothWriteChunked, public BluetoothReadChunked {
   void onChunkedWrite(const char* data) {
     ESP_LOGI(TAG, "Chunked write request: %s", data);
-    // wonder::display_text(data);
+    wonder::display_text(data);
   }
 
+  void onSubscribe(NimBLECharacteristic* pCharacteristic, ble_gap_conn_desc* desc, uint16_t subValue) {
+    ESP_LOGI(TAG, "Subscribe event: %d", subValue);
+    if (subValue == 2) {
+      wonder::play_file("/bluetooth.wav");
+    }
+  }
 };
 
 static CharacteristicTest testCallback;

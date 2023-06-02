@@ -16,14 +16,16 @@
 #define DEBOUNCE_DELAY 1000 // ms
 #define Y_HOME_DURATION 1200 // ms
 
-#define Y_ENABLE_PIN GPIO_NUM_19
-#define Y_RESTING_POS 1370
-#define Y_DOWN_POS 2200
-#define Y_UP_POS 0
+// Stepper motor steps / mm
+// 472.4 steps/mm
+#define Y_ENABLE_PIN 6
+#define Y_RESTING_POS -1300
+#define Y_DOWN_POS 0
+#define Y_UP_POS -1600
 
-#define X_PIN_NEIGHBOUR_DIST 1630 // Baseline 1800
-#define X_PIN_ADJA_DIST 2645 // baseline 3000
-#define X_PIN_OFFSET 200
+#define X_PIN_NEIGHBOUR_DIST -130
+#define X_PIN_ADJA_DIST -245
+#define X_PIN_OFFSET 3500
 #define X_ENABLE_PIN GPIO_NUM_22
 
 // How many braille cells are in each X axis
@@ -41,19 +43,18 @@ static EventGroupHandle_t display_event;
 static uint32_t cursor_pos = 0;
 static const char* TAG = "movement";
 
-static ShiftRegister74HC595<1> sr_x(16, 2, 4);
 static wonder::Stepper<1> x_stepper = {
   // NOTE: pins here are for the shift register
-  .stepper = AccelStepperSR<1>(&sr_x, AccelStepperSR<1>::FULL4WIRE, 2, 4, 0, 3),
+  .stepper = AccelStepperSR<1>(nullptr, AccelStepperSR<1>::DRIVER, 19, 18),
   .home_type = wonder::HOMING,
   .limit_pin = GPIO_NUM_21,
 };
 
-static ShiftRegister74HC595<1> sr_y(18, 5, 17);
+static ShiftRegister74HC595<1> sr_y(16, 5, 17);
 static AccelStepperSR<1> y_steppers[BRAILLE_CELL_ROWS] = {
-  AccelStepperSR<1>(&sr_y, AccelStepperSR<2>::DRIVER, 4, 5),
-  AccelStepperSR<1>(&sr_y, AccelStepperSR<2>::DRIVER, 6, 7),
-  AccelStepperSR<1>(&sr_y, AccelStepperSR<2>::DRIVER, 10, 11)
+  AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 1, 0),
+  AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 3, 2),
+  AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 5, 4)
 };
 
 std::string wonder::get_current_text() {
@@ -82,12 +83,10 @@ static void run_y_until_done() {
 }
 
 static void run_x_until_done() {
-  bool is_end = false;
-  while (!is_end) {
-    if (x_stepper.stepper.distanceToGo() != 0) {
-      x_stepper.stepper.run();
-      is_end = false;
-    }
+  x_stepper.stepper.enableOutputs();
+  while (true) {
+    if (x_stepper.stepper.distanceToGo() == 0) break;
+    x_stepper.stepper.run();
   }
 }
 
@@ -103,25 +102,18 @@ void wonder::_home_y(double y_home_speed, double y_speed, long max_home_duration
     y_steppers[i].enableOutputs();
   }
 
-  // Home all the y steppers. Because they do not have limit switches,
-  // We just force all the steppers to the edge.
-  while ((esp_timer_get_time() / 1000) <= home_until) {
-    for (int i = 0; i < BRAILLE_CELL_ROWS; i++) {
-      y_steppers[i].runSpeed();
-    }
-  }
-
   // Get the stepper to a stable location
   for (int i = 0; i < BRAILLE_CELL_ROWS; i++) {
     y_steppers[i].setCurrentPosition(0);
     y_steppers[i].setMaxSpeed(y_speed);
     y_steppers[i].setSpeed(y_speed);
-    y_steppers[i].moveTo(Y_DOWN_POS);
+    y_steppers[i].moveTo(-Y_UP_POS);
   }
 
   run_y_until_done();
 
   for (int i = 0; i < BRAILLE_CELL_ROWS; i++) {
+    y_steppers[i].setCurrentPosition(0);
     y_steppers[i].moveTo(Y_RESTING_POS);
   }
 
@@ -243,8 +235,11 @@ void wonder::_home_x(double x_home_speed, double x_norm_speed) {
     }
   }
   
+  ESP_LOGI(TAG, "[%dms] Home Success", esp_log_timestamp());
+  x_stepper.stepper.setCurrentPosition(0);
   x_stepper.stepper.move(-X_PIN_OFFSET);
   run_x_until_done();
+  x_stepper.stepper.setCurrentPosition(0);
 
   ESP_LOGI(TAG, "[%dms]: X motor homed", esp_log_timestamp());
 }
@@ -271,14 +266,19 @@ void wonder::init_motors() {
 
   // Setting x stepper
   x_stepper.stepper.setAcceleration(pref.getDouble(wonder::get_config_string(X_ACCEL)));
+  x_stepper.stepper.setPinsInverted(false, false, true);
+  x_stepper.stepper.setEnablePin(X_ENABLE_PIN, false);
 
   // Setting y stepper
   for (int i = 0; i < BRAILLE_CELL_ROWS; i++) {
     y_steppers[i].setAcceleration(pref.getDouble(wonder::get_config_string(Y_ACCEL)));
     y_steppers[i].setPinsInverted(false, false, true);
-    y_steppers[i].setEnablePin(Y_ENABLE_PIN, false);
+    y_steppers[i].setEnablePin(Y_ENABLE_PIN, true);
     y_steppers[i].disableOutputs();
   }
+
+  // Special case
+  y_steppers[1].setPinsInverted(true, false, true);
 
   ESP_LOGI(TAG, "[%dms] Init motors", esp_log_timestamp());
 
@@ -305,12 +305,17 @@ void wonder::braille_task(void *pvParameters) {
 
     while (true) {
       // from the beginning, iterate if target and current display is the same
-      bool complete = false;
+      bool complete = true;
       int to_change;
       for (to_change = 0; to_change < TOTAL_CELLS; to_change++) {
-        if (current_display[to_change] != target_display[to_change]) break;
+        if (current_display[to_change] != target_display[to_change]) {
+          complete = false;
+          break;
+        }
       }
       if (complete) break;
+
+      ESP_LOGI(TAG, "Changing pos %d to %d", to_change, target_display[to_change]);
 
       go_to_position(to_change);
       change_letter(target_display[to_change]);
@@ -333,10 +338,6 @@ void wonder::braille_task(void *pvParameters) {
   }
 }
 
-static void update_target_display_end() {
-  update_target_display((full_text.size() - 1) / TOTAL_CELLS);
-}
-
 void update_target_display(int new_offset) {
   // New display offset
   display_offset = new_offset;
@@ -344,7 +345,7 @@ void update_target_display(int new_offset) {
 
   // Se the beginning of the pointer and end.
   // This variable tells if the current offset displays the end of the text.
-  boolean is_at_end = display_offset < max_offset;
+  bool is_at_end = display_offset < max_offset;
   int len_to_read = TOTAL_CELLS;
   if (is_at_end) {
     len_to_read = full_text.size() - ((max_offset+1) * TOTAL_CELLS);
@@ -363,14 +364,18 @@ void update_target_display(int new_offset) {
   xEventGroupSetBits(display_event, KEY_BIT);
 }
 
-void up_page() {
+static void update_target_display_end() {
+  update_target_display((full_text.size() - 1) / TOTAL_CELLS);
+}
+
+void wonder::up_page() {
   int max_offset = (full_text.size() - 1) / TOTAL_CELLS;
   if (display_offset > 0) {
     update_target_display(--display_offset);
   }
 }
 
-void down_page() {
+void wonder::down_page() {
   int max_offset = (full_text.size() - 1) / TOTAL_CELLS;
   if (display_offset < max_offset) {
     update_target_display(++display_offset);
