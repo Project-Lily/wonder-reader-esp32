@@ -23,7 +23,7 @@
 #define Y_DOWN_POS 0
 #define Y_UP_POS -2050
 
-#define X_PIN_ADJA_DIST -442
+#define X_PIN_ADJA_DIST -438
 #define X_PIN_NEIGHBOUR_DIST (long)(4.0/8.0 * X_PIN_ADJA_DIST)
 #define X_PIN_OFFSET 4650
 #define X_ENABLE_PIN GPIO_NUM_22

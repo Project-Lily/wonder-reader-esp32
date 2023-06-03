@@ -54,7 +54,7 @@ void setup() {
   ESP_LOGI(TAG, "Systems initialized, %d tasks running", taskCount);
 
   // wonder::display_question("Hello!");
-  wonder::display_question("ham");
+  // wonder::display_question("ham");
   // wonder::play_init_jingle();
 }
 

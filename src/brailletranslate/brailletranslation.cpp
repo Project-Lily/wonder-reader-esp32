@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <string>
 
+// #define NUMBER_MODE
+
 static const char *TAG = "translation";
 
 // Translates simple braille ready character to its binary form
@@ -161,7 +163,8 @@ std::string wonder::braille_to_text(uint8_t *buffer, size_t size) {
       result.push_back(brailleToChar(buffer[++i]) ^ 32);
     } else {
       switch(chr) {
-        case '0':
+      #ifndef NUMBER_MODE
+      case '0':
         result.push_back('"');
         break;
       case '1':
@@ -185,6 +188,7 @@ std::string wonder::braille_to_text(uint8_t *buffer, size_t size) {
       case '8':
         result.push_back('?');
         break;
+      #endif
       default:
         result.push_back(chr);
       }
@@ -208,11 +212,17 @@ size_t wonder::text_to_braille(std::string input, int offset, int maxlength, uin
     }
     // If it's a number
     if (chr > 47 && chr < 58) {
+      #ifndef NUMBER_MODE
       char num[3];
       sprintf(num, "#%c", chr);
       result.append(num);
       continue;
+      #else
+      result.push_back(chr);
+      #endif
     }
+
+    #ifndef NUMBER_MODE
     // If character is number
     switch(chr) {
       case '"':
@@ -243,6 +253,7 @@ size_t wonder::text_to_braille(std::string input, int offset, int maxlength, uin
       default:
         result.push_back(chr);
     }
+    #endif
   }
 
   // Second pass is to get the char
