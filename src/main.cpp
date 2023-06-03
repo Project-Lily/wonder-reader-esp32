@@ -39,32 +39,30 @@ void setup() {
     return;
   }
 
-  // disableCore1WDT();
-
   // Initialize main loop
   // This main loop is initialized so that we can register event handlers.
   // Without this, event handler will go: Bruh
-  ESP_ERROR_CHECK(esp_event_loop_create_default());
+  // ESP_ERROR_CHECK(esp_event_loop_create_default());
 
   wonder::init_board();
-  wonder::init_network();
+  // wonder::init_network();
   wonder::init_bt();
   wonder::init_motors();
-  wonder::init_sound();
-
-  xTaskCreatePinnedToCore(wonder::braille_task, "Braille Task", 2048, NULL, configMAX_PRIORITIES - 1, NULL, 1);
+  // wonder::init_sound();
 
   int taskCount = uxTaskGetNumberOfTasks();
   ESP_LOGI(TAG, "Systems initialized, %d tasks running", taskCount);
-  TaskStatus_t* taskStatusArray = (TaskStatus_t*)malloc(sizeof(TaskStatus_t) * taskCount);
 
-  wonder::display_text("Hello!");
+  // wonder::display_question("Hello!");
+  wonder::display_question("ham");
+  // wonder::play_init_jingle();
 }
 
 // long nextSend = 0;
 // long interval = 5000;
 void loop() {
-  wonder::loop_sound();
+  wonder::process_events();
+  // wonder::loop_sound();
   // long milli = millis();
   // if (milli > nextSend) {
   //   char buf[128];
@@ -72,5 +70,4 @@ void loop() {
   //   wonder::send_answer(buf, len);
   //   nextSend = milli + interval;
   // }
-  // wonder::process_events();
 }

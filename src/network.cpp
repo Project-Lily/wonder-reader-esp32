@@ -3,6 +3,7 @@
 #include <mdns.h>
 #include "secret.h"
 #include "esp_log.h"
+#include "WiFi.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_system.h"
@@ -15,7 +16,7 @@ static const char* TAG = "net";
 httpd_handle_t server = NULL;
 httpd_config_t server_conf = HTTPD_DEFAULT_CONFIG();
 
-// extern void register_routes(httpd_handle_t *server);
+extern void register_routes(httpd_handle_t *server);
 
 void init_mdns() {
   const char* hostname = "wreader-aaaaa";

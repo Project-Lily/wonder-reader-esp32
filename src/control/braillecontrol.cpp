@@ -9,7 +9,7 @@
 #include "esp_log.h"
 #include "ShiftRegister74HC595.h"
 #include "brailletranslate/brailletranslation.h"
-#include <Keypad.h>
+#include "bluetooth/bluetooth.h"
 #include <string>
 #include <vector>
 
@@ -19,24 +19,30 @@
 // Stepper motor steps / mm
 // 472.4 steps/mm
 #define Y_ENABLE_PIN 6
-#define Y_RESTING_POS -1300
+#define Y_RESTING_POS -890
 #define Y_DOWN_POS 0
-#define Y_UP_POS -1600
+#define Y_UP_POS -2050
 
-#define X_PIN_NEIGHBOUR_DIST -130
-#define X_PIN_ADJA_DIST -245
-#define X_PIN_OFFSET 3500
+#define X_PIN_ADJA_DIST -442
+#define X_PIN_NEIGHBOUR_DIST (long)(4.0/8.0 * X_PIN_ADJA_DIST)
+#define X_PIN_OFFSET 4650
 #define X_ENABLE_PIN GPIO_NUM_22
 
 // How many braille cells are in each X axis
-#define TOTAL_CELLS 9
+#define TOTAL_CELLS 7
 
 #define BRAILLE_CELL_ROWS 3
 
 #define KEY_BIT BIT0
 
 static uint32_t display_offset = 0;
-static std::vector<uint8_t> full_text;
+
+static bool is_on_question = true;
+
+static std::vector<uint8_t> question_text;
+static std::vector<uint8_t> answer_text;
+static std::vector<uint8_t>* full_text;
+
 static uint8_t target_display[TOTAL_CELLS] = {0};
 static uint8_t current_display[TOTAL_CELLS] = {0};
 static EventGroupHandle_t display_event;
@@ -52,13 +58,13 @@ static wonder::Stepper<1> x_stepper = {
 
 static ShiftRegister74HC595<1> sr_y(16, 5, 17);
 static AccelStepperSR<1> y_steppers[BRAILLE_CELL_ROWS] = {
-  AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 1, 0),
   AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 3, 2),
-  AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 5, 4)
+  AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 5, 4),
+  AccelStepperSR<1>(&sr_y, AccelStepperSR<1>::DRIVER, 1, 0),
 };
 
 std::string wonder::get_current_text() {
-  return wonder::braille_to_text(full_text.data(), full_text.size());
+  return wonder::braille_to_text(full_text->data(), full_text->size());
 }
 
 static void run_y_until_done() {
@@ -164,7 +170,8 @@ static void move_by_letters(int n) {
 }
 
 static void go_to_position(uint32_t position) {
-  x_stepper.stepper.move((cursor_pos - position) * X_PIN_ADJA_DIST);
+  x_stepper.stepper.moveTo(position * -(X_PIN_ADJA_DIST + X_PIN_NEIGHBOUR_DIST));
+  cursor_pos = position;
   run_x_until_done();
 }
 
@@ -278,7 +285,7 @@ void wonder::init_motors() {
   }
 
   // Special case
-  y_steppers[1].setPinsInverted(true, false, true);
+  // y_steppers[1].setPinsInverted(true, false, true);
 
   ESP_LOGI(TAG, "[%dms] Init motors", esp_log_timestamp());
 
@@ -294,6 +301,8 @@ void wonder::init_motors() {
     pref.getDouble(wonder::get_config_string(X_SPEED))
   );
   #endif
+
+  xTaskCreatePinnedToCore(wonder::braille_task, "Braille Task", 2048, NULL, configMAX_PRIORITIES - 1, NULL, 1);
   
   ESP_LOGI(TAG, "[%dms] Motors initialized", esp_log_timestamp());
 }
@@ -320,7 +329,6 @@ void wonder::braille_task(void *pvParameters) {
       go_to_position(to_change);
       change_letter(target_display[to_change]);
       current_display[to_change] = target_display[to_change];
-      cursor_pos = to_change;
 
       // Give back control to scheduler
       vTaskDelay(pdMS_TO_TICKS(100));
@@ -328,7 +336,7 @@ void wonder::braille_task(void *pvParameters) {
 
     // If cursor pos is not at the end, set to next unset letter
     if (cursor_pos < TOTAL_CELLS-1) {
-      go_to_position(cursor_pos++);
+      go_to_position(cursor_pos + 1);
     }
 
     ESP_LOGI(TAG, "Algo done! Text now: ");
@@ -341,20 +349,20 @@ void wonder::braille_task(void *pvParameters) {
 void update_target_display(int new_offset) {
   // New display offset
   display_offset = new_offset;
-  int max_offset = (full_text.size() - 1) / TOTAL_CELLS;
+  int max_offset = (full_text->size() - 1) / TOTAL_CELLS;
 
   // Se the beginning of the pointer and end.
   // This variable tells if the current offset displays the end of the text.
-  bool is_at_end = display_offset < max_offset;
+  bool is_at_end = display_offset == max_offset;
   int len_to_read = TOTAL_CELLS;
   if (is_at_end) {
-    len_to_read = full_text.size() - ((max_offset+1) * TOTAL_CELLS);
+    len_to_read = full_text->size() - (max_offset * TOTAL_CELLS);
   }
 
-  auto begin = full_text.begin() + (display_offset * TOTAL_CELLS);
+  auto begin = full_text->begin() + (display_offset * TOTAL_CELLS);
   auto end = is_at_end
-  ? full_text.end()
-  : full_text.begin() + (display_offset * TOTAL_CELLS) + len_to_read;
+  ? full_text->end()
+  : full_text->begin() + (display_offset * TOTAL_CELLS) + len_to_read;
 
   std::copy(begin, end, target_display);
 
@@ -365,39 +373,76 @@ void update_target_display(int new_offset) {
 }
 
 static void update_target_display_end() {
-  update_target_display((full_text.size() - 1) / TOTAL_CELLS);
+  update_target_display((full_text->size() - 1) / TOTAL_CELLS);
 }
 
 void wonder::up_page() {
-  int max_offset = (full_text.size() - 1) / TOTAL_CELLS;
+  int max_offset = (full_text->size() - 1) / TOTAL_CELLS;
   if (display_offset > 0) {
     update_target_display(--display_offset);
   }
 }
 
 void wonder::down_page() {
-  int max_offset = (full_text.size() - 1) / TOTAL_CELLS;
+  int max_offset = (full_text->size() - 1) / TOTAL_CELLS;
   if (display_offset < max_offset) {
     update_target_display(++display_offset);
   }
 }
 
-void wonder::send_letter(uint8_t letter) {
-  full_text.push_back(letter);
+void wonder::switch_answer_mode() {
+  if (is_on_question) {
+    full_text = &answer_text;
+  } else {
+    full_text = &question_text;
+  }
+  is_on_question = !is_on_question;
   update_target_display_end();
+}
+
+void wonder::send_letter(uint8_t letter) {
+  answer_text.push_back(letter);
+  if (is_on_question) {
+    wonder::switch_answer_mode();
+  } else {
+    update_target_display_end();
+  }
 }
 
 void wonder::backspace() {
-  if (full_text.size() == 0) return;
-  full_text.pop_back();
-  update_target_display_end();
+  if (answer_text.size() == 0) return;
+  answer_text.pop_back();
+  if (is_on_question) {
+    switch_answer_mode();
+  } else {
+    update_target_display_end();
+  }
 }
 
-void wonder::display_text(std::string new_text) {
+void wonder::display_question(std::string new_text) {
   display_offset = 0;
   uint8_t buffer[new_text.length()];
   text_to_braille(new_text, 0, new_text.length(), buffer);
-  full_text.clear();
-  full_text.insert(full_text.end(), buffer, buffer + new_text.length());
-  update_target_display_end();
+  ESP_LOGI(TAG, "Will display |%s| of length: %d", new_text.c_str(), new_text.length());
+  question_text.clear();
+  answer_text.clear();
+  question_text.insert(question_text.end(), buffer, buffer + new_text.length());
+  ESP_LOGI(TAG, "Length of question_text %d", question_text.size());
+  full_text = &question_text;
+  is_on_question = true;
+  update_target_display(0);
+}
+
+void wonder::send_answer_bt() {
+  uint8_t answer_buf[answer_text.size()];
+  ESP_LOGI(TAG, "Got here");
+  std::copy(answer_text.begin(), answer_text.end(), answer_buf);
+  ESP_LOGI(TAG, "Got there");
+  std::string answer_str = braille_to_text(answer_buf, answer_text.size());
+  ESP_LOGI(TAG, "Got bruh'd %s", answer_str.c_str());
+  char buf[128];
+  ESP_LOGI(TAG, "INb4 result");
+  size_t len = sprintf(buf, "{\"event\": \"answer\", \"data\": \"%s\"}", answer_str.c_str());
+  ESP_LOGI(TAG, "Got bruh'd twice %s", buf);
+  wonder::send_answer(buf, len);
 }

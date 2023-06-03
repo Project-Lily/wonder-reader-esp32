@@ -28,12 +28,15 @@ namespace wonder {
   void home_x();
   void home_y();
 
-  void display_text(std::string text);
+  void display_question(std::string text);
   void braille_task(void *pvParameters);
   void send_letter(uint8_t braille_letter);
   void up_page();
   void down_page();
   void backspace();
+
+  void switch_answer_mode();
+  void send_answer_bt();
 
   std::string get_current_text();
 }

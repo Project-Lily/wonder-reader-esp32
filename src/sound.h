@@ -7,6 +7,7 @@ namespace wonder {
   void loop_sound();
   void play_text(std::string text);
   void play_file(const char* path);
+  void play_init_jingle();
 }
 
 #endif

@@ -59,7 +59,7 @@ class BluetoothWriteChunked: virtual public NimBLECharacteristicCallbacks {
 
   void onWrite(NimBLECharacteristic* pCharacteristic) {
     const char* data = pCharacteristic->getValue().c_str();
-    ESP_LOGI(TAG, "Received |%s| len=%d lastchar=%c", data, strlen(data), data[strlen(data) - 1]);
+    // ESP_LOGI(TAG, "Received |%s| len=%d lastchar=%c", data, strlen(data), data[strlen(data) - 1]);
     // Look for a terminator
     if (data[strlen(data) - 1] == 1) {
       _builder.concat(data, strlen(data) - 1);
@@ -85,7 +85,7 @@ class CharacteristicTest: public NimBLECharacteristicCallbacks {
 class CharacteristicAnswer: public BluetoothWriteChunked, public BluetoothReadChunked {
   void onChunkedWrite(const char* data) {
     ESP_LOGI(TAG, "Chunked write request: %s", data);
-    wonder::display_text(data);
+    wonder::display_question(data);
   }
 
   void onSubscribe(NimBLECharacteristic* pCharacteristic, ble_gap_conn_desc* desc, uint16_t subValue) {

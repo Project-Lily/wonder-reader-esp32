@@ -6,7 +6,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 
-#define I2S_DOUT      22
+#define I2S_DOUT      23
 #define I2S_BCLK      26
 #define I2S_LRC       25
 
@@ -16,12 +16,12 @@ struct SoundTaskParam {
   std::string text;
 };
 
-bool should_play_text = false;
-std::string text_to_play = "";
+static bool should_play_text = false;
+static std::string text_to_play = "";
 
-Audio audio;
-SemaphoreHandle_t play_sound_semaphore;
-SoundTaskParam sound_task_param;
+static Audio audio;
+static SemaphoreHandle_t play_sound_semaphore;
+static SoundTaskParam sound_task_param;
 
 void wonder::init_sound() {
   // Init audio
@@ -29,16 +29,17 @@ void wonder::init_sound() {
   audio.setPinout(I2S_BCLK, I2S_LRC, I2S_DOUT);
   audio.setVolume(21);
   xSemaphoreGive(play_sound_semaphore);
+  audio.connecttohost("http://mp3.ffh.de/radioffh/hqlivestream.mp3");
 }
 
 void wonder::loop_sound() {
-  xSemaphoreTake(play_sound_semaphore, portMAX_DELAY);
-  if (should_play_text) {
-    should_play_text = false;
-    audio.connecttohost(text_to_play.c_str());
-  }
+  // xSemaphoreTake(play_sound_semaphore, portMAX_DELAY);
+  // if (should_play_text) {
+  //   should_play_text = false;
+  //   audio.connecttohost(text_to_play.c_str());
+  // }
   audio.loop();
-  xSemaphoreGive(play_sound_semaphore);
+  // xSemaphoreGive(play_sound_semaphore);
 }
 
 void create_host_sound_task(void *pvParameters) {
@@ -69,4 +70,9 @@ void wonder::play_text(std::string text) {
 
 void wonder::play_file(const char* path) {
   audio.connecttoFS(SPIFFS, path);
+}
+
+void wonder::play_init_jingle() {
+  // audio.connecttohost("http://0n-80s.radionetz.de:8000/0n-70s.mp3");
+  wonder::play_file("/SPIFFS/bluetooth.wav");
 }
